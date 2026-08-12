@@ -3,6 +3,9 @@
 
 use super::*;
 
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+use wasm_bindgen_test::wasm_bindgen_test as test;
+
 struct TestMatrix([[f64; 2]; 2]);
 
 impl MatrixRead<f64> for TestMatrix {

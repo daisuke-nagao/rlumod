@@ -49,6 +49,12 @@
 #[cfg(test)]
 extern crate std;
 
+#[cfg(all(test, target_arch = "wasm32", target_os = "unknown"))]
+use wasm_bindgen_test::wasm_bindgen_test_configure;
+
+#[cfg(all(test, target_arch = "wasm32", target_os = "unknown"))]
+wasm_bindgen_test_configure!(run_in_browser);
+
 mod algorithm;
 mod api;
 pub use api::*;

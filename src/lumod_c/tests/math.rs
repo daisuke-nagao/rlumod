@@ -7,6 +7,9 @@ use super::super::*;
 use crate::math_contract::{self, Factor, Matrix, Vector};
 use std::{format, vec, vec::Vec};
 
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+use wasm_bindgen_test::wasm_bindgen_test as test;
+
 const CANARY: f64 = f64::from_bits(0x4272_3456_789a_bc00);
 
 fn guarded(values: &Vector, capacity: usize) -> Vec<f64> {
