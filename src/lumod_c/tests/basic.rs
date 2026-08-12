@@ -4,6 +4,9 @@
 use super::super::*;
 use std::format;
 
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+use wasm_bindgen_test::wasm_bindgen_test as test;
+
 const MAX_DIMENSION: usize = 3;
 type ModificationCase<'a> = (i32, i32, i32, i32, usize, &'a [f64]);
 

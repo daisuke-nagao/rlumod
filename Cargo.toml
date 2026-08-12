@@ -2,6 +2,7 @@
 name = "rlumod"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 description = "A safe, no_std Rust adaptation of LUmod for updating dense LU factorizations"
 license = "MIT"
 
@@ -10,6 +11,9 @@ default = []
 lumod-c = []
 
 [dependencies]
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = "0.3"
 
 [[example]]
 name = "lumod-c"

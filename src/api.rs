@@ -141,7 +141,7 @@ pub fn storage_lengths(capacity: usize) -> Result<StorageLengths, StorageError> 
     let l = capacity
         .checked_mul(next)
         .ok_or(StorageError::SizeOverflow)?;
-    let u = if capacity.is_multiple_of(2) {
+    let u = if capacity % 2 == 0 {
         (capacity / 2) * next
     } else {
         capacity * (next / 2)

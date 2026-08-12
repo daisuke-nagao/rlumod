@@ -32,7 +32,7 @@ pub(crate) fn make_well_conditioned_matrix(dimension: usize, scale: f64) -> Matr
     for row in 0..dimension {
         let mut off_diagonal_sum = 0.0;
         for column in 0..dimension {
-            if row == column || (3 * row + 5 * column + 1).is_multiple_of(4) {
+            if row == column || (3 * row + 5 * column + 1) % 4 == 0 {
                 continue;
             }
             let numerator = (7 * (row + 1) + 11 * (column + 1)) % 9;
@@ -325,6 +325,9 @@ pub(crate) fn exercise_complete_update_lifecycle<F: Factor>(factor: &mut F) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+    use wasm_bindgen_test::wasm_bindgen_test as test;
 
     #[test]
     fn matrix_oracle_uses_zero_based_rows_and_columns() {

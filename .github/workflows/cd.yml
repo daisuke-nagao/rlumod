@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Verify and package crate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install Rust stable
+        run: rustup toolchain install stable --profile minimal
+      - name: Verify tag matches crate version
+        shell: bash
+        run: |
+          crate_version="$(cargo +stable metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
+          test "${GITHUB_REF_NAME}" = "v${crate_version}"
+      - name: Run release tests
+        run: cargo +stable test --all-features --release
+      - name: Build and verify package
+        run: cargo +stable package
+      - name: Upload crate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: crate
+          path: target/package/*.crate
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Create GitHub release
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download crate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: crate
+          path: dist
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" dist/*.crate --generate-notes --verify-tag

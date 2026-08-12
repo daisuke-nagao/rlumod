@@ -6,6 +6,12 @@ use rlumod::{
     UpdateError, Workspace, storage_lengths,
 };
 
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+wasm_bindgen_test_configure!(run_in_browser);
+
 #[test]
 fn calculates_storage_lengths_without_overflow() {
     for (capacity, l, u) in [(0, 0, 0), (1, 2, 1), (2, 6, 3), (3, 12, 6)] {
