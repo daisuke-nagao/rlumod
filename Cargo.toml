@@ -2,5 +2,16 @@
 name = "rlumod"
 version = "0.1.0"
 edition = "2024"
+description = "A safe, no_std Rust adaptation of LUmod for updating dense LU factorizations"
+license = "MIT"
+
+[features]
+default = []
+lumod-c = []
 
 [dependencies]
+
+[[example]]
+name = "lumod-c"
+path = "examples/lumod-c.rs"
+required-features = ["lumod-c"]
