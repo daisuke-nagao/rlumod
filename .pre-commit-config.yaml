@@ -16,6 +16,14 @@ repos:
     -   id: requirements-txt-fixer
 -   repo: local
     hooks:
+    -   id: check-changelog
+        name: check changelog
+        entry: python scripts/check_changelog.py CHANGELOG.md
+        language: python
+        additional_dependencies:
+        - keepachangelog==2.0.0
+        always_run: true
+        pass_filenames: false
     -   id: cargo-fmt
         name: cargo fmt
         entry: cargo fmt

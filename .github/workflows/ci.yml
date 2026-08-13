@@ -24,8 +24,10 @@ jobs:
           persist-credentials: false
       - name: Install Rust stable
         run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
-      - name: Check formatting
-        run: cargo +stable fmt --all --check
+      - name: Install pre-commit
+        run: python3 -m pip install -r requirements.txt
+      - name: Run pre-commit
+        run: pre-commit run --all-files
       - name: Lint
         run: cargo +stable clippy --all-targets --all-features -- -D warnings
       - name: Build documentation
