@@ -24,6 +24,10 @@ jobs:
           persist-credentials: false
       - name: Install Rust stable
         run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: Install changelog validator
+        run: python3 -m pip install keepachangelog==2.0.0
+      - name: Validate changelog
+        run: python3 scripts/check_changelog.py CHANGELOG.md
       - name: Check formatting
         run: cargo +stable fmt --all --check
       - name: Lint
