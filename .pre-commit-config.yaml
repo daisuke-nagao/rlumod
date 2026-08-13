@@ -18,11 +18,12 @@ repos:
     hooks:
     -   id: check-changelog
         name: check changelog
-        entry: python scripts/check_changelog.py
+        entry: python scripts/check_changelog.py CHANGELOG.md
         language: python
         additional_dependencies:
         - keepachangelog==2.0.0
-        files: ^CHANGELOG\.md$
+        always_run: true
+        pass_filenames: false
     -   id: cargo-fmt
         name: cargo fmt
         entry: cargo fmt
