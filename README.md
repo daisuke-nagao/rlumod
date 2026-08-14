@@ -1,10 +1,10 @@
 # rlumod
 
 `rlumod` is a safe, `no_std` Rust adaptation of **LUmod**, Michael A.
-Saunders' software for maintaining a dense square factorization
-`L A = U` as rows and columns of `A` are added, removed, or replaced.
-Updating the existing factors avoids refactorizing the changed matrix from
-scratch.
+Saunders' software for updating a square matrix as rows and columns are added,
+removed, or replaced, and for solving systems with the updated matrix. It
+maintains the required internal representation across changes instead of
+rebuilding it from scratch.
 
 The `rlumod` project is an independent Rust adaptation and is not affiliated
 with, endorsed by, or maintained by Michael A. Saunders or SOL.
@@ -69,9 +69,7 @@ cargo doc --all-features --open
 The original LUmod was written by Michael A. Saunders at Stanford University's
 Systems Optimization Laboratory (SOL). It maintains the factorization
 `L A = U`, where `L` is a product of stabilized elementary transformations and
-`U` is upper triangular. The original software describes LUmod as suitable for
-dense simplex implementations and as a building block for updating sparse
-factorizations through the Schur-complement method.
+`U` is upper triangular.
 
 See the [original LUmod page at SOL](https://stanford.edu/group/SOL/software/lumod/new_index.html)
 for the algorithm's provenance, original distributions, and references.
