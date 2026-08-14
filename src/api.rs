@@ -214,7 +214,7 @@ impl<'a, T> Workspace<'a, T> {
     }
 }
 
-/// Dense LU factors backed entirely by caller-owned storage.
+/// An updatable square-matrix representation backed by caller-owned factor storage.
 ///
 /// The logical dimension never exceeds the capacity. The borrowed buffers
 /// contain the factors for the current square matrix and all update and solve

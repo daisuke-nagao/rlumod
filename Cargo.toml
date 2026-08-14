@@ -1,9 +1,9 @@
 [package]
 name = "rlumod"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
-description = "A safe, no_std Rust adaptation of LUmod for updating dense LU factorizations"
+description = "Safe, no_std matrix updates and linear solves using the LUmod algorithm"
 repository = "https://github.com/daisuke-nagao/rlumod"
 keywords = ["linear-algebra", "LUmod", "matrix", "no-std"]
 categories = ["algorithms", "no-std"]

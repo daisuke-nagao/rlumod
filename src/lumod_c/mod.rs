@@ -50,7 +50,7 @@ fn numerics(epsilon: f64) -> Numerics<f64> {
     }
 }
 
-/// Updates dense LU factors in place using an original LUmod operation mode.
+/// Updates LUmod factor storage in place using an original operation mode.
 ///
 /// | `mode` | Operation | Required input |
 /// |---|---|---|

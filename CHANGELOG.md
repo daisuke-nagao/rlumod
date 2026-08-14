@@ -7,14 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-15
+
+### Changed
+
+- Corrected the public documentation and package metadata to describe the
+  implemented matrix updates and linear solves without implying a conventional
+  LU decomposition or sparse support.
+
 ## [0.1.0] - 2026-08-14
 
 ### Added
 
-- A safe, `no_std` Rust API for updating dense LU factorizations using caller-owned storage.
+- A safe, `no_std` Rust API for incremental square-matrix updates using caller-owned storage.
 - Row and column insertion, replacement, and removal, plus in-place solves for `f32` and `f64`.
 - An optional `lumod-c` feature providing a lower-level compatibility API.
 - Automated Keep a Changelog validation for commits that modify this file.
 
-[Unreleased]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/daisuke-nagao/rlumod/releases/tag/v0.1.0

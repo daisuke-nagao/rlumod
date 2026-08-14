@@ -7,8 +7,8 @@
 //! A complete Rust adaptation of the LUmod numerical software made available
 //! by Stanford's Systems Optimization Laboratory.
 //!
-//! The safe API updates a dense square matrix through caller-owned LU-factor
-//! storage. It performs no heap allocation and maintains the invariant
+//! The safe API updates a square-matrix representation through caller-owned
+//! factor storage. It performs no heap allocation and maintains the invariant
 //! `dimension <= capacity`. Successful updates leave the factors representing
 //! the updated matrix; structural update errors leave both the factors and the
 //! dimension unchanged.
