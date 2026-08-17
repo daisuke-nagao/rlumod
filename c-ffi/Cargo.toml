@@ -1,0 +1,18 @@
+[package]
+name = "rlumod-c-ffi"
+version = "0.1.2"
+edition = "2024"
+rust-version = "1.85"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+rlumod = { path = "..", features = ["lumod-c"] }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

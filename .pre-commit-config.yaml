@@ -30,3 +30,9 @@ repos:
         language: system
         types: [rust]
         pass_filenames: false
+    -   id: cargo-fmt-c-ffi
+        name: cargo fmt (C FFI)
+        entry: cargo fmt --manifest-path c-ffi/Cargo.toml
+        language: system
+        types: [rust]
+        pass_filenames: false

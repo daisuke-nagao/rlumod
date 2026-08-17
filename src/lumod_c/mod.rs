@@ -33,9 +33,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)] // Mirrors the indexed C storage formulas.
 
-#[cfg(test)]
-use crate::algorithm::Transform;
-use crate::algorithm::{self, DenseL, Numerics, PackedU};
+use crate::algorithm::{self, DenseL, Numerics, PackedU, Transform};
 
 #[cfg(test)]
 mod tests;
@@ -266,8 +264,28 @@ pub fn Usolve(mode: i32, maxmod: i32, n: i32, u: &mut [f64], y: &mut [f64]) {
     algorithm::u_solve(mode != 1, n.max(0) as usize, &u, y);
 }
 
-#[cfg(test)]
-pub(crate) fn elmgen(x: &mut f64, y: &mut f64, eps: f64, cs: &mut f64, sn: &mut f64) {
+/// Applies an elementary transformation to the first `last` elements of two vectors.
+///
+/// `first` is retained for C compatibility and is ignored, matching the
+/// original dense implementation.
+///
+/// # Panics
+///
+/// May panic when `last` is positive and either slice is too short.
+pub fn elm(_first: i32, last: i32, x: &mut [f64], y: &mut [f64], cs: f64, sn: f64) {
+    let transform = Transform {
+        swap: cs < 0.0,
+        multiplier: sn,
+    };
+    for index in 0..last.max(0) as usize {
+        algorithm::apply_pair(&mut x[index], &mut y[index], transform);
+    }
+}
+
+/// Generates an elementary transformation that eliminates `y`.
+///
+/// The returned `cs` and `sn` values can be passed to [`elm`].
+pub fn elmgen(x: &mut f64, y: &mut f64, eps: f64, cs: &mut f64, sn: &mut f64) {
     let transform = algorithm::elementary(x, y, numerics(eps));
     *cs = if transform.swap { -1.0 } else { 0.0 };
     *sn = transform.multiplier;

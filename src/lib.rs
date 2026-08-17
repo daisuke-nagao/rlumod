@@ -148,6 +148,9 @@
 //! should normally prefer [`LuMod`]. The sparse C implementation has no
 //! corresponding API in this crate.
 //!
+//! The project repository also contains a separate `c-ffi` package that
+//! builds a `no_std` static library with the dense, one-based C ABI.
+//!
 //! # Runnable examples
 //!
 //! The source distribution includes small examples for the complete safe API

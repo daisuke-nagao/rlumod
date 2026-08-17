@@ -56,6 +56,17 @@ fn generates_an_elementary_transformation() {
 }
 
 #[test]
+fn applies_an_elementary_transformation_like_the_c_api() {
+    let mut x = [1.0, 2.0, 99.0];
+    let mut y = [3.0, 4.0, 88.0];
+
+    elm(7, 2, &mut x, &mut y, -1.0, 0.5);
+
+    assert_eq!(x, [3.0, 4.0, 99.0]);
+    assert_eq!(y, [2.5, 4.0, 88.0]);
+}
+
+#[test]
 fn generates_every_elementary_transformation_shape() {
     let (mut x, mut y, mut cs, mut sn) = (0.0, 0.0, 9.0, 9.0);
     elmgen(&mut x, &mut y, MACHINE_PRECISION, &mut cs, &mut sn);

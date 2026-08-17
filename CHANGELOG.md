@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a separate `no_std` static library exposing the complete seven-function
+  dense `lumod-c` ABI with its original one-based storage convention.
+- Exposed the low-level `elm` and `elmgen` operations through the optional
+  Rust `lumod-c` slice API.
+
 ## [0.1.2] - 2026-08-18
 
 ### Added

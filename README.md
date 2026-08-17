@@ -26,6 +26,27 @@ matrix storage or a one-shot factorization API.
 cargo add rlumod
 ```
 
+## C FFI
+
+The Git repository includes a dense, one-based C ABI compatible with the seven
+functions declared by `lumod-c/lumod_dense.h`. Build its `no_std` static
+library directly from a repository checkout:
+
+```console
+cargo build --manifest-path c-ffi/Cargo.toml --release
+```
+
+The header is `c-ffi/include/lumod-c/lumod_dense.h`. The library is written to
+`c-ffi/target/release/librlumod_c_ffi.a` on Unix-like systems or
+`c-ffi/target/release/rlumod_c_ffi.lib` on Windows.
+
+This compatibility ABI uses caller-owned, one-based buffers. Element zero is
+an unused dummy; L needs `maxmod * maxmod + 1` doubles and U needs
+`maxmod * (maxmod + 1) / 2 + 1` doubles. Callers must provide aligned,
+writable, sufficiently large, non-overlapping buffers. The ABI cannot verify
+those C pointer properties. Sparse storage, a dynamic library, and a checked
+length-and-status C API are not provided.
+
 ## Documentation and examples
 
 The [crate documentation](https://docs.rs/rlumod/latest/rlumod/) is the main

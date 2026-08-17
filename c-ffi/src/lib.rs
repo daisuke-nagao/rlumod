@@ -1,0 +1,405 @@
+// SPDX-FileCopyrightText: 2026 Daisuke Nagao
+// SPDX-License-Identifier: MIT
+
+#![no_std]
+#![deny(unsafe_op_in_unsafe_fn)]
+#![allow(non_snake_case, clippy::too_many_arguments)]
+
+use core::ffi::{c_double, c_int};
+use core::mem::{align_of, size_of};
+use core::slice;
+
+use rlumod::lumod_c as rust;
+
+#[cfg(not(test))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo<'_>) -> ! {
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+fn element_count_fits_slice(length: usize) -> bool {
+    length <= isize::MAX as usize / size_of::<c_double>()
+}
+
+fn storage_lengths(maxmod: c_int) -> Option<(usize, usize)> {
+    let capacity = usize::try_from(maxmod).ok().filter(|&value| value > 0)?;
+    let l = capacity.checked_mul(capacity)?;
+    let next = capacity.checked_add(1)?;
+    let u = if capacity % 2 == 0 {
+        (capacity / 2).checked_mul(next)?
+    } else {
+        capacity.checked_mul(next / 2)?
+    };
+    element_count_fits_slice(l)
+        .then_some(())
+        .and_then(|()| element_count_fits_slice(u).then_some((l, u)))
+}
+
+fn dimension(value: c_int, capacity: usize) -> Option<usize> {
+    usize::try_from(value)
+        .ok()
+        .filter(|&value| value > 0 && value <= capacity)
+}
+
+fn index(value: c_int, dimension: usize) -> Option<c_int> {
+    usize::try_from(value)
+        .ok()
+        .filter(|&value| value > 0 && value <= dimension)
+        .and_then(|value| c_int::try_from(value - 1).ok())
+}
+
+fn pointer_is_aligned(pointer: *mut c_double) -> bool {
+    !pointer.is_null() && (pointer as usize) % align_of::<c_double>() == 0
+}
+
+fn pointers_are_aligned<const N: usize>(pointers: [*mut c_double; N]) -> bool {
+    pointers.into_iter().all(pointer_is_aligned)
+}
+
+unsafe fn one_based_slice<'a>(pointer: *mut c_double, length: usize) -> Option<&'a mut [c_double]> {
+    let allocation_length = length.checked_add(1)?;
+    if !pointer_is_aligned(pointer) || !element_count_fits_slice(allocation_length) {
+        return None;
+    }
+    // SAFETY: The caller guarantees an additional writable dummy element at index zero.
+    let first = unsafe { pointer.add(1) };
+    // SAFETY: The caller guarantees that the elements after the dummy form the
+    // required writable, initialized, non-overlapping region.
+    Some(unsafe { slice::from_raw_parts_mut(first, length) })
+}
+
+/// Updates dense one-based LUmod factor storage.
+///
+/// # Safety
+///
+/// All pointers must satisfy the storage, alignment, and non-aliasing contract
+/// declared in `lumod_dense.h`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn LUmod(
+    mode: c_int,
+    maxmod: c_int,
+    n: c_int,
+    krow: c_int,
+    kcol: c_int,
+    l: *mut c_double,
+    u: *mut c_double,
+    y: *mut c_double,
+    z: *mut c_double,
+    w: *mut c_double,
+) {
+    if !(1..=4).contains(&mode) {
+        return;
+    }
+    let Some((l_len, u_len)) = storage_lengths(maxmod) else {
+        return;
+    };
+    let capacity = maxmod as usize;
+    let Some(n_len) = dimension(n, capacity) else {
+        return;
+    };
+    let (krow, kcol) = match mode {
+        1 => (0, 0),
+        2 => {
+            let Some(kcol) = index(kcol, n_len) else {
+                return;
+            };
+            (0, kcol)
+        }
+        3 => {
+            let Some(krow) = index(krow, n_len) else {
+                return;
+            };
+            (krow, 0)
+        }
+        4 => {
+            let (Some(krow), Some(kcol)) = (index(krow, n_len), index(kcol, n_len)) else {
+                return;
+            };
+            (krow, kcol)
+        }
+        _ => return,
+    };
+    if !pointers_are_aligned([l, u, y, z, w]) {
+        return;
+    }
+    // SAFETY: This function's contract requires all five one-based buffers to
+    // be valid and mutually non-overlapping for their computed lengths.
+    let (Some(l), Some(u), Some(y), Some(z), Some(w)) = (unsafe {
+        (
+            one_based_slice(l, l_len),
+            one_based_slice(u, u_len),
+            one_based_slice(y, n_len),
+            one_based_slice(z, n_len),
+            one_based_slice(w, n_len),
+        )
+    }) else {
+        return;
+    };
+    rust::LUmod(mode, maxmod, n, krow, kcol, l, u, y, z, w);
+}
+
+/// Multiplies a vector by a dense one-based L factor.
+///
+/// # Safety
+///
+/// All pointers must satisfy the storage, alignment, and non-aliasing contract
+/// declared in `lumod_dense.h`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn Lprod(
+    mode: c_int,
+    maxmod: c_int,
+    n: c_int,
+    l: *mut c_double,
+    y: *mut c_double,
+    z: *mut c_double,
+) {
+    let Some((l_len, _)) = storage_lengths(maxmod) else {
+        return;
+    };
+    let Some(n_len) = dimension(n, maxmod as usize) else {
+        return;
+    };
+    if !pointers_are_aligned([l, y, z]) {
+        return;
+    }
+    // SAFETY: Required by this function's pointer contract.
+    let (Some(l), Some(y), Some(z)) = (unsafe {
+        (
+            one_based_slice(l, l_len),
+            one_based_slice(y, n_len),
+            one_based_slice(z, n_len),
+        )
+    }) else {
+        return;
+    };
+    rust::Lprod(mode, maxmod, n, l, y, z);
+}
+
+/// Solves a dense one-based upper-triangular system in place.
+///
+/// # Safety
+///
+/// Both pointers must satisfy the storage, alignment, and non-aliasing contract
+/// declared in `lumod_dense.h`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn Usolve(
+    mode: c_int,
+    maxmod: c_int,
+    n: c_int,
+    u: *mut c_double,
+    y: *mut c_double,
+) {
+    let Some((_, u_len)) = storage_lengths(maxmod) else {
+        return;
+    };
+    let Some(n_len) = dimension(n, maxmod as usize) else {
+        return;
+    };
+    if !pointers_are_aligned([u, y]) {
+        return;
+    }
+    // SAFETY: Required by this function's pointer contract.
+    let (Some(u), Some(y)) = (unsafe { (one_based_slice(u, u_len), one_based_slice(y, n_len)) })
+    else {
+        return;
+    };
+    rust::Usolve(mode, maxmod, n, u, y);
+}
+
+/// Applies a forward sweep to dense one-based factors.
+///
+/// # Safety
+///
+/// All pointers must satisfy the storage, alignment, and non-aliasing contract
+/// declared in `lumod_dense.h`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn LUforw(
+    first: c_int,
+    last: c_int,
+    n: c_int,
+    nu: c_int,
+    maxmod: c_int,
+    eps: c_double,
+    l: *mut c_double,
+    u: *mut c_double,
+    y: *mut c_double,
+) {
+    let Some((l_len, u_len)) = storage_lengths(maxmod) else {
+        return;
+    };
+    let capacity = maxmod as usize;
+    let Some(n_len) = dimension(n, capacity) else {
+        return;
+    };
+    let Ok(nu_len) = usize::try_from(nu) else {
+        return;
+    };
+    let (Some(first), Some(last)) = (index(first, n_len), index(last, n_len)) else {
+        return;
+    };
+    if first > last || nu_len > capacity {
+        return;
+    }
+    let vector_len = n_len.max(nu_len);
+    if !pointers_are_aligned([l, u, y]) {
+        return;
+    }
+    // SAFETY: Required by this function's pointer contract.
+    let (Some(l), Some(u), Some(y)) = (unsafe {
+        (
+            one_based_slice(l, l_len),
+            one_based_slice(u, u_len),
+            one_based_slice(y, vector_len),
+        )
+    }) else {
+        return;
+    };
+    rust::LUforw(first, last, n, nu, maxmod, eps, l, u, y);
+}
+
+/// Applies a backward sweep to dense one-based factors.
+///
+/// # Safety
+///
+/// All pointers must satisfy the storage, alignment, and non-aliasing contract
+/// declared in `lumod_dense.h`. `last` must be separately writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn LUback(
+    first: c_int,
+    last: *mut c_int,
+    n: c_int,
+    nu: c_int,
+    maxmod: c_int,
+    eps: c_double,
+    l: *mut c_double,
+    u: *mut c_double,
+    y: *mut c_double,
+    z: *mut c_double,
+) {
+    let Some((l_len, u_len)) = storage_lengths(maxmod) else {
+        return;
+    };
+    let capacity = maxmod as usize;
+    let Some(n_len) = dimension(n, capacity) else {
+        return;
+    };
+    let Ok(nu_len) = usize::try_from(nu) else {
+        return;
+    };
+    let Some(first) = index(first, n_len) else {
+        return;
+    };
+    if last.is_null()
+        || (last as usize) % align_of::<c_int>() != 0
+        || !pointers_are_aligned([l, u, y, z])
+    {
+        return;
+    }
+    // SAFETY: Nullness and alignment were checked; the caller guarantees readability.
+    let last_value = unsafe { last.read() };
+    if last_value == 0 || last_value == c_int::MIN {
+        return;
+    }
+    let selected = last_value.unsigned_abs() as usize;
+    if selected == 0 || selected > n_len || first as usize >= selected || nu_len > capacity {
+        return;
+    }
+    let mut inner_last = if last_value > 0 {
+        last_value - 1
+    } else {
+        last_value
+    };
+    let vector_len = n_len.max(nu_len);
+    // SAFETY: Required by this function's pointer contract.
+    let (Some(l), Some(u), Some(y), Some(z)) = (unsafe {
+        (
+            one_based_slice(l, l_len),
+            one_based_slice(u, u_len),
+            one_based_slice(y, vector_len),
+            one_based_slice(z, vector_len),
+        )
+    }) else {
+        return;
+    };
+    rust::LUback(first, &mut inner_last, n, nu, maxmod, eps, l, u, y, z);
+    // SAFETY: The caller guarantees that `last` remains writable for the call.
+    unsafe { last.write(inner_last + 1) };
+}
+
+/// Applies an elementary transform to `last` one-based elements.
+///
+/// # Safety
+///
+/// `x` and `y` must each name a dummy followed by `last` writable,
+/// initialized, non-overlapping doubles.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn elm(
+    first: c_int,
+    last: c_int,
+    x: *mut c_double,
+    y: *mut c_double,
+    cs: c_double,
+    sn: c_double,
+) {
+    let Ok(length) = usize::try_from(last) else {
+        return;
+    };
+    if length == 0 {
+        return;
+    }
+    if !pointers_are_aligned([x, y]) {
+        return;
+    }
+    // SAFETY: Required by this function's pointer contract.
+    let (Some(x), Some(y)) = (unsafe { (one_based_slice(x, length), one_based_slice(y, length)) })
+    else {
+        return;
+    };
+    rust::elm(first, last, x, y, cs, sn);
+}
+
+/// Generates a scalar elementary transform.
+///
+/// # Safety
+///
+/// Every pointer must name a distinct writable double. `x` and `y` must also
+/// be initialized; `cs` and `sn` are output-only.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn elmgen(
+    x: *mut c_double,
+    y: *mut c_double,
+    eps: c_double,
+    cs: *mut c_double,
+    sn: *mut c_double,
+) {
+    if !pointer_is_aligned(x)
+        || !pointer_is_aligned(y)
+        || !pointer_is_aligned(cs)
+        || !pointer_is_aligned(sn)
+    {
+        return;
+    }
+    // Work through locals so no Rust references are formed from foreign pointers.
+    // SAFETY: The caller guarantees that all checked pointers are readable.
+    let (mut x_value, mut y_value) = unsafe { (x.read(), y.read()) };
+    let (mut cs_value, mut sn_value) = (0.0, 0.0);
+    rust::elmgen(
+        &mut x_value,
+        &mut y_value,
+        eps,
+        &mut cs_value,
+        &mut sn_value,
+    );
+    // SAFETY: The caller guarantees that all checked pointers are writable.
+    unsafe {
+        x.write(x_value);
+        y.write(y_value);
+        cs.write(cs_value);
+        sn.write(sn_value);
+    }
+}
+
+#[cfg(test)]
+mod tests;
