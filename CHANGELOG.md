@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added user-oriented lifecycle, fixed-storage, and removal examples, plus
+  crate-level guidance for storage, numerical behavior, and migration from
+  dense C LUmod.
+
+### Changed
+
+- Clarified the crate's scope and configured docs.rs to include the optional
+  compatibility API.
+
 ## [0.1.1] - 2026-08-15
 
 ### Changed

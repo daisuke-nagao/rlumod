@@ -15,6 +15,9 @@ lumod-c = []
 
 [dependencies]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test = "0.3"
 
