@@ -1,6 +1,6 @@
 [package]
 name = "rlumod"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 rust-version = "1.85"
 description = "Safe, no_std matrix updates and linear solves using the LUmod algorithm"
@@ -14,6 +14,9 @@ default = []
 lumod-c = []
 
 [dependencies]
+
+[package.metadata.docs.rs]
+all-features = true
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test = "0.3"
