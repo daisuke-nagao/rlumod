@@ -44,7 +44,7 @@ The final crate must also reference `rlumod` so the linker retains the C ABI:
 crate-type = ["staticlib"]
 
 [dependencies]
-rlumod = { version = "0.1.2", features = ["c-ffi-one-based"] }
+rlumod = { version = "0.2.0", features = ["c-ffi-one-based"] }
 ```
 
 ```rust
@@ -62,10 +62,10 @@ fn panic(_info: &core::panic::PanicInfo<'_>) -> ! {
 
 This compatibility ABI uses caller-owned, one-based buffers. Element zero is
 an unused dummy; L needs `maxmod * maxmod + 1` doubles and U needs
-`maxmod * (maxmod + 1) / 2 + 1` doubles. Callers must provide aligned,
-writable, sufficiently large, non-overlapping buffers. The ABI cannot verify
-those C pointer properties. Sparse storage, a dynamic library, and a checked
-length-and-status C API are not provided.
+`maxmod * (maxmod + 1) / 2 + 1` doubles. Callers must provide initialized,
+aligned, writable, sufficiently large, non-overlapping buffers. The ABI cannot
+verify those C pointer properties. Sparse storage, a dynamic library, and a
+checked length-and-status C API are not provided.
 
 ## Documentation and examples
 

@@ -12,8 +12,9 @@
  * maxmod * (maxmod + 1) / 2 + 1 doubles. Vector buffers need one dummy
  * followed by every element required by the operation.
  *
- * Every pointer must be non-null, aligned, writable for its required length,
- * and non-overlapping with every other mutable region used by the call.
+ * Every pointer must be non-null and aligned, and every required element must
+ * be initialized, writable, and non-overlapping with every other mutable
+ * region used by the call.
  */
 
 #ifdef __cplusplus
