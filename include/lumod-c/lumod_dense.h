@@ -1,5 +1,5 @@
-#ifndef LUMOD_C_LUMOD_DENSE_H
-#define LUMOD_C_LUMOD_DENSE_H
+#ifndef UUID_9A76DC0D_EB08_4049_BB6E_2D5A8239FDCE
+#define UUID_9A76DC0D_EB08_4049_BB6E_2D5A8239FDCE
 
 /*
  * rlumod dense LUmod compatibility API.
@@ -33,4 +33,4 @@ void elmgen(double *x, double *y, double eps, double *cs, double *sn);
 }
 #endif
 
-#endif
+#endif /* UUID_9A76DC0D_EB08_4049_BB6E_2D5A8239FDCE */
