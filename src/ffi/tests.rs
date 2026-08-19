@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Daisuke Nagao
+// SPDX-License-Identifier: MIT
+
 use super::*;
 use crate::lumod_c as rust;
 
