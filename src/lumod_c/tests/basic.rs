@@ -49,30 +49,6 @@ fn expect_factorization(
 }
 
 #[test]
-fn generates_an_elementary_transformation() {
-    let (mut x, mut y, mut cs, mut sn) = (4.0, 2.0, 0.0, 0.0);
-    elmgen(&mut x, &mut y, MACHINE_PRECISION, &mut cs, &mut sn);
-    assert_eq!((x, y, cs, sn), (4.0, 0.0, 0.0, -0.5));
-}
-
-#[test]
-fn generates_every_elementary_transformation_shape() {
-    let (mut x, mut y, mut cs, mut sn) = (0.0, 0.0, 9.0, 9.0);
-    elmgen(&mut x, &mut y, MACHINE_PRECISION, &mut cs, &mut sn);
-    assert_eq!((x, y, cs, sn), (0.0, 0.0, 0.0, 0.0));
-
-    x = 0.0;
-    y = MACHINE_PRECISION * TINY_NUMBER / 2.0;
-    elmgen(&mut x, &mut y, MACHINE_PRECISION, &mut cs, &mut sn);
-    assert_eq!((x, y), (0.0, 0.0));
-
-    x = 1.0;
-    y = 4.0;
-    elmgen(&mut x, &mut y, MACHINE_PRECISION, &mut cs, &mut sn);
-    assert_eq!((x, y, cs, sn), (4.0, 0.0, -1.0, -0.25));
-}
-
-#[test]
 fn multiplies_and_solves_triangular_factors() {
     let mut l = [0.0; MAX_DIMENSION * MAX_DIMENSION];
     let mut u = [0.0; MAX_DIMENSION * (MAX_DIMENSION + 1) / 2];
@@ -106,80 +82,6 @@ fn multiplies_and_solves_triangular_factors() {
         &mut singular_rhs,
     );
     assert!(singular_rhs[0].is_infinite());
-}
-
-#[test]
-fn sweeps_factors_forward_and_backward() {
-    let setup = || {
-        let mut l = [0.0; MAX_DIMENSION * MAX_DIMENSION];
-        let mut u = [0.0; MAX_DIMENSION * (MAX_DIMENSION + 1) / 2];
-        make_identity(&mut l, &mut u, 2);
-        (l, u)
-    };
-    let (mut l, mut u) = setup();
-    let mut y = [2.0, 3.0];
-    LUforw(0, 1, 2, 2, 3, MACHINE_PRECISION, &mut l, &mut u, &mut y);
-    assert_eq!(y, [0.0, -1.5]);
-    assert_eq!(&l[..6], &[0.0, 1.0, 0.0, 1.0, -0.5, 0.0]);
-    assert_eq!(&u[..4], &[2.0, 3.0, 0.0, -1.5]);
-
-    let (mut l, mut u) = setup();
-    let mut y = [0.0, 3.0];
-    LUforw(0, 1, 2, 1, 3, MACHINE_PRECISION, &mut l, &mut u, &mut y);
-    LUforw(1, 1, 2, 1, 3, MACHINE_PRECISION, &mut l, &mut u, &mut y);
-
-    let (mut l, mut u) = setup();
-    let mut y = [0.0; 2];
-    let mut z = [1.0, 2.0];
-    let mut last = 1;
-    LUback(
-        0,
-        &mut last,
-        2,
-        2,
-        3,
-        MACHINE_PRECISION,
-        &mut l,
-        &mut u,
-        &mut y,
-        &mut z,
-    );
-    assert_eq!(last, 1);
-    assert_eq!(y, [0.0, 1.0]);
-    assert_eq!(z, [0.0, 2.0]);
-    assert_eq!(&l[..6], &[1.0, -0.5, 0.0, 0.0, 1.0, 0.0]);
-    assert_eq!(&u[..4], &[1.0, -0.5, 0.0, 1.0]);
-
-    let (mut l, mut u) = setup();
-    let mut y = [0.0; 2];
-    let mut z = [0.0, 2.0];
-    let mut last = 1;
-    LUback(
-        0,
-        &mut last,
-        2,
-        1,
-        3,
-        MACHINE_PRECISION,
-        &mut l,
-        &mut u,
-        &mut y,
-        &mut z,
-    );
-    last = -2;
-    LUback(
-        0,
-        &mut last,
-        2,
-        1,
-        3,
-        MACHINE_PRECISION,
-        &mut l,
-        &mut u,
-        &mut y,
-        &mut z,
-    );
-    assert_eq!(last, 1);
 }
 
 #[test]
@@ -242,34 +144,4 @@ fn exercises_every_factor_modification_mode() {
             "mode {mode}, n {dimension}, row {row}, column {column} must be a no-op"
         );
     }
-}
-
-#[test]
-fn handles_empty_forward_and_backward_sweeps() {
-    let mut l = [0.0];
-    let mut u = [0.0];
-    let mut y = [7.0];
-    LUforw(0, 0, 1, 1, 1, MACHINE_PRECISION, &mut l, &mut u, &mut y);
-    assert_eq!(u, [7.0]);
-    LUforw(0, 0, 0, 0, 1, MACHINE_PRECISION, &mut [], &mut [], &mut []);
-
-    let mut last = 9;
-    LUback(
-        0,
-        &mut last,
-        0,
-        0,
-        1,
-        MACHINE_PRECISION,
-        &mut [],
-        &mut [],
-        &mut [],
-        &mut [],
-    );
-    assert_eq!(last, 0);
-
-    let mut first = [1.0];
-    let mut second = [2.0];
-    apply_pair(&mut first[0], &mut second[0], 1.0, 0.0);
-    assert_eq!((first, second), ([1.0], [2.0]));
 }

@@ -30,12 +30,17 @@ jobs:
         run: pre-commit run --all-files
       - name: Lint
         run: cargo +stable clippy --all-targets --all-features -- -D warnings
+      - name: Lint downstream staticlib fixture
+        run: cargo +stable clippy --manifest-path tests/staticlib/Cargo.toml --lib -- -D warnings
       - name: Build documentation
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo +stable doc --all-features --no-deps
       - name: Verify package
         run: cargo +stable package
+      - name: Verify C FFI header is included in the Rust package
+        shell: bash
+        run: cargo +stable package --list | grep -Fx 'include/lumod-c/lumod_dense.h'
 
   native-tests:
     name: Test (${{ matrix.runner }})
@@ -47,12 +52,14 @@ jobs:
             experimental: false
           - runner: ubuntu-24.04
             experimental: false
+            ffi: true
           - runner: ubuntu-22.04-arm
             experimental: false
           - runner: ubuntu-24.04-arm
             experimental: false
           - runner: windows-2022
             experimental: false
+            ffi: true
           - runner: windows-2025
             experimental: false
           - runner: windows-11-arm
@@ -63,6 +70,7 @@ jobs:
             experimental: false
           - runner: macos-15
             experimental: false
+            ffi: true
           - runner: macos-26
             experimental: false
           - runner: ubuntu-26.04
@@ -85,6 +93,50 @@ jobs:
         run: rustup toolchain install stable --profile minimal
       - name: Run tests
         run: cargo +stable test --all-features
+      - name: Build downstream C FFI static library
+        if: matrix.ffi == true
+        run: cargo +stable build --manifest-path tests/staticlib/Cargo.toml --release
+      - name: Compile and run C and C++ FFI smoke tests
+        if: matrix.ffi == true && runner.os != 'Windows'
+        shell: bash
+        run: |
+          archive="tests/staticlib/target/release/librlumod_staticlib_consumer.a"
+          cc -std=c11 -Wall -Wextra -Werror -Iinclude \
+            tests/staticlib/smoke.c "${archive}" -lm -o tests/staticlib/target/smoke-c
+          tests/staticlib/target/smoke-c
+          c++ -x c++ -std=c++17 -Wall -Wextra -Werror -Iinclude \
+            tests/staticlib/smoke.c -x none "${archive}" -lm -o tests/staticlib/target/smoke-cpp
+          tests/staticlib/target/smoke-cpp
+      - name: Compile and run MSVC C and C++ FFI smoke tests
+        if: matrix.ffi == true && runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=amd64
+          cl /nologo /W4 /WX /std:c11 /Iinclude tests\staticlib\smoke.c /Fe:tests\staticlib\target\smoke-c.exe /link tests\staticlib\target\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\smoke-c.exe
+          cl /nologo /W4 /WX /TP /std:c++17 /Iinclude tests\staticlib\smoke.c /Fe:tests\staticlib\target\smoke-cpp.exe /link tests\staticlib\target\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\smoke-cpp.exe
+      - name: Verify C FFI feature gate and unmangled symbols
+        if: matrix.runner == 'ubuntu-24.04'
+        shell: bash
+        run: |
+          CARGO_TARGET_DIR=target/feature-gate cargo +stable rustc --release \
+            --no-default-features --features lumod-c --lib -- --emit=obj
+          if nm -g --defined-only target/feature-gate/release/deps/rlumod-*.o | \
+            awk '{print $3}' | \
+            grep -Ex 'LUmod|Lprod|LUforw|LUback|Usolve|elm|elmgen'; then
+            exit 1
+          fi
+          archive="tests/staticlib/target/release/librlumod_staticlib_consumer.a"
+          nm -g --defined-only "${archive}" | awk '{print $3}' > tests/staticlib/target/symbols.txt
+          for symbol in LUmod Lprod Usolve; do
+            grep -Fx "${symbol}" tests/staticlib/target/symbols.txt
+          done
+          for symbol in LUforw LUback elm elmgen; do
+            ! grep -Fx "${symbol}" tests/staticlib/target/symbols.txt
+          done
+          ! grep -Eq '(^|[^[:alnum:]_])(LUforw|LUback|elm|elmgen)([^[:alnum:]_]|$)' \
+            include/lumod-c/lumod_dense.h
 
   msrv:
     name: Test MSRV (Rust 1.85)
@@ -96,9 +148,13 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Rust 1.85
-        run: rustup toolchain install 1.85.0 --profile minimal
+        run: rustup toolchain install 1.85.0 --profile minimal --target thumbv7em-none-eabi
       - name: Run all targets on the MSRV
         run: cargo +1.85.0 test --all-targets --all-features
+      - name: Build downstream C FFI staticlib on the MSRV
+        run: cargo +1.85.0 build --manifest-path tests/staticlib/Cargo.toml --release
+      - name: Check no_std C FFI target on the MSRV
+        run: cargo +1.85.0 check --all-features --target thumbv7em-none-eabi --release
 
   wasi-tests:
     name: Test WebAssembly (WASI)

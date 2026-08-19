@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-20
+
+### Added
+
+- Integrated the user-facing `LUmod`, `Lprod`, and `Usolve` C entry points into
+  the optional `c-ffi-one-based` feature with their original one-based storage
+  convention. The feature enables `lumod-c`; the crate remains an `rlib`, while
+  downstream integration owns the panic handler and final `staticlib` crate
+  type.
+
+### Changed
+
+- Restricted the `lumod-c` Rust API to `LUmod`, `Lprod`, and `Usolve`, removing
+  `LUforw`, `LUback`, `elm`, and `elmgen`, and made the C FFI module link-only.
+  Removing the previously released `LUforw` and `LUback` functions is a
+  breaking change from 0.1.2.
+
 ## [0.1.2] - 2026-08-18
 
 ### Added
@@ -37,7 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An optional `lumod-c` feature providing a lower-level compatibility API.
 - Automated Keep a Changelog validation for commits that modify this file.
 
-[Unreleased]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/daisuke-nagao/rlumod/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/daisuke-nagao/rlumod/releases/tag/v0.1.0

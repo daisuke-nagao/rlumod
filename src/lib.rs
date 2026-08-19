@@ -3,6 +3,16 @@
 
 #![no_std]
 #![warn(missing_docs)]
+#![cfg_attr(
+    feature = "c-ffi-one-based",
+    doc = r#"
+The C ABI is exported for linking, not as a Rust raw-pointer API.
+
+```compile_fail,E0603
+let _ = rlumod::ffi::LUmod;
+```
+"#
+)]
 
 //! A safe, allocation-free Rust adaptation of the LUmod numerical software
 //! made available by Stanford's Systems Optimization Laboratory.
@@ -142,11 +152,13 @@
 //! `f32` and `f64` and return structural or solve errors instead of relying on
 //! unchecked preconditions.
 //!
-//! For a closer port, enable the `lumod-c` feature. The `lumod_c` module keeps the
-//! original names and mode arguments, but it is a zero-based Rust slice API,
-//! not a C ABI, and its public numerical functions use `f64`. New Rust code
-//! should normally prefer [`LuMod`]. The sparse C implementation has no
-//! corresponding API in this crate.
+//! For a closer Rust port, enable the `lumod-c` feature. The `lumod_c` module
+//! keeps the original names and mode arguments as a zero-based Rust slice API.
+//! Enable `c-ffi-one-based` for the dense, one-based C ABI; it also enables
+//! `lumod-c`. This crate remains an `rlib`; a final C-linkable crate must
+//! provide its own panic handler, select `staticlib`, and reference `rlumod` so
+//! the C ABI is retained. New Rust code should normally prefer [`LuMod`]. The
+//! sparse C implementation has no corresponding API in this crate.
 //!
 //! # Runnable examples
 //!
@@ -175,6 +187,9 @@ wasm_bindgen_test_configure!(run_in_browser);
 mod algorithm;
 mod api;
 pub use api::*;
+
+#[cfg(feature = "c-ffi-one-based")]
+mod ffi;
 
 #[cfg(feature = "lumod-c")]
 pub mod lumod_c;

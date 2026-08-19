@@ -15,7 +15,9 @@ The crate provides:
 - caller-owned factor and workspace storage, with no heap allocation during
   updates or solves; and
 - an optional `lumod-c` feature exposing a lower-level Rust slice API with the
-  original LUmod names and mode arguments.
+  original LUmod names and mode arguments; and
+- an optional `c-ffi-one-based` feature exposing one-based C entry points for
+  `LUmod`, `Lprod`, and `Usolve`.
 
 `rlumod` supports dense square matrices only. It does not provide sparse
 matrix storage or a one-shot factorization API.
@@ -25,6 +27,66 @@ matrix storage or a one-shot factorization API.
 ```console
 cargo add rlumod
 ```
+
+## C FFI
+
+The optional `c-ffi-one-based` feature includes dense, one-based C entry points
+for `LUmod`, `Lprod`, and `Usolve`, as declared by
+`lumod-c/lumod_dense.h`. It automatically enables the lower-level `lumod-c`
+Rust API. `rlumod` remains an `rlib`; the final `no_std` crate is responsible
+for its panic handler and for selecting `staticlib` when a C-linkable archive
+is needed. The header is `include/lumod-c/lumod_dense.h`.
+
+The final crate must also reference `rlumod` so the linker retains the C ABI:
+
+```toml
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+rlumod = { version = "0.2.0", features = ["c-ffi-one-based"] }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+```
+
+```rust
+#![no_std]
+
+extern crate rlumod; // Force-link the exported C ABI.
+
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo<'_>) -> ! {
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+// Stock core may retain this reference even when the final crate aborts on panic.
+#[cfg(not(target_env = "msvc"))]
+#[unsafe(no_mangle)]
+extern "C" fn rust_eh_personality(
+    _version: i32,
+    _actions: i32,
+    _exception_class: u64,
+    _exception_object: *mut (),
+    _context: *mut (),
+) -> i32 {
+    loop {
+        core::hint::spin_loop();
+    }
+}
+```
+
+This compatibility ABI uses caller-owned, one-based buffers. Element zero is
+an unused dummy; L needs `maxmod * maxmod + 1` doubles and U needs
+`maxmod * (maxmod + 1) / 2 + 1` doubles. Callers must provide initialized,
+aligned, writable, sufficiently large, non-overlapping buffers. The ABI cannot
+verify those C pointer properties. Sparse storage, a dynamic library, and a
+checked length-and-status C API are not provided.
 
 ## Documentation and examples
 

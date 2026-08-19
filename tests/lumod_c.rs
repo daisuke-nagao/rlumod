@@ -9,14 +9,12 @@ use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 wasm_bindgen_test_configure!(run_in_browser);
 
-use rlumod::lumod_c::{LUback, LUforw, LUmod, Lprod, Usolve};
+use rlumod::lumod_c::{LUmod, Lprod, Usolve};
 
 #[test]
 fn exposes_lumod_c_algorithm_at_module_root() {
     let _ = LUmod;
     let _ = Lprod;
-    let _ = LUforw;
-    let _ = LUback;
     let _ = Usolve;
 }
 

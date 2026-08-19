@@ -30,3 +30,9 @@ repos:
         language: system
         types: [rust]
         pass_filenames: false
+    -   id: cargo-fmt-staticlib-consumer
+        name: cargo fmt (staticlib consumer)
+        entry: cargo fmt --manifest-path tests/staticlib/Cargo.toml
+        language: system
+        types: [rust]
+        pass_filenames: false

@@ -1,0 +1,18 @@
+[package]
+name = "rlumod-staticlib-consumer"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+rlumod = { path = "../..", features = ["c-ffi-one-based"] }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
