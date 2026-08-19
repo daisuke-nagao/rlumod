@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Daisuke Nagao
 // SPDX-License-Identifier: MIT
 
-#![no_std]
+//! Dense, one-based C compatibility ABI.
+//!
+//! Enable this module with the `c-ffi-one-based` Cargo feature.
+
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(non_snake_case, clippy::too_many_arguments)]
 
@@ -9,15 +12,7 @@ use core::ffi::{c_double, c_int};
 use core::mem::{align_of, size_of};
 use core::slice;
 
-use rlumod::lumod_c as rust;
-
-#[cfg(not(test))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo<'_>) -> ! {
-    loop {
-        core::hint::spin_loop();
-    }
-}
+use crate::lumod_c as rust;
 
 fn element_count_fits_slice(length: usize) -> bool {
     length <= isize::MAX as usize / size_of::<c_double>()

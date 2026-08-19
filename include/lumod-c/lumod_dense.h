@@ -2,7 +2,7 @@
 #define LUMOD_C_LUMOD_DENSE_H
 
 /*
- * Dense LUmod compatibility API.
+ * rlumod dense LUmod compatibility API.
  *
  * Factor and vector storage is one-based: element zero is an unused dummy.
  * L needs maxmod * maxmod + 1 doubles and U needs

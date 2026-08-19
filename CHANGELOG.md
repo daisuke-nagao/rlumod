@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added a separate `no_std` static library exposing the complete seven-function
-  dense `lumod-c` ABI with its original one-based storage convention.
+- Integrated the complete seven-function dense `lumod-c` ABI into the optional
+  `c-ffi-one-based` feature with its original one-based storage convention.
+  The feature enables `lumod-c`; the crate remains an `rlib`, while downstream
+  integration owns the panic handler and final `staticlib` crate type.
 - Exposed the low-level `elm` and `elmgen` operations through the optional
   Rust `lumod-c` slice API.
 

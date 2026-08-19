@@ -30,9 +30,9 @@ repos:
         language: system
         types: [rust]
         pass_filenames: false
-    -   id: cargo-fmt-c-ffi
-        name: cargo fmt (C FFI)
-        entry: cargo fmt --manifest-path c-ffi/Cargo.toml
+    -   id: cargo-fmt-staticlib-consumer
+        name: cargo fmt (staticlib consumer)
+        entry: cargo fmt --manifest-path tests/staticlib/Cargo.toml
         language: system
         types: [rust]
         pass_filenames: false

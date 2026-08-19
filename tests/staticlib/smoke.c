@@ -91,9 +91,8 @@ int main(void) {
     elm(7, 2, first, second, -1.0, 0.5);
     elmgen(&scalar_x, &scalar_y, eps, &cs, &sn);
     if (first[0] != 119.0 || first[3] != 117.0 || second[0] != 120.0 ||
-        second[3] != 118.0 ||
-        !close_enough(scalar_x, 4.0) || scalar_y != 0.0 ||
-        cs != 0.0 || !close_enough(sn, -0.5)) {
+        second[3] != 118.0 || !close_enough(scalar_x, 4.0) ||
+        scalar_y != 0.0 || cs != 0.0 || !close_enough(sn, -0.5)) {
       return 4;
     }
   }

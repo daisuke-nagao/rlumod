@@ -15,7 +15,8 @@ The crate provides:
 - caller-owned factor and workspace storage, with no heap allocation during
   updates or solves; and
 - an optional `lumod-c` feature exposing a lower-level Rust slice API with the
-  original LUmod names and mode arguments.
+  original LUmod names and mode arguments; and
+- an optional `c-ffi-one-based` feature exposing the original one-based C ABI.
 
 `rlumod` supports dense square matrices only. It does not provide sparse
 matrix storage or a one-shot factorization API.
@@ -28,17 +29,35 @@ cargo add rlumod
 
 ## C FFI
 
-The Git repository includes a dense, one-based C ABI compatible with the seven
-functions declared by `lumod-c/lumod_dense.h`. Build its `no_std` static
-library directly from a repository checkout:
+The optional `c-ffi-one-based` feature includes a dense, one-based C ABI
+compatible with the seven functions declared by `lumod-c/lumod_dense.h`. It
+automatically enables the lower-level `lumod-c` Rust API. `rlumod` remains an
+`rlib`; the final `no_std` crate is responsible for its panic handler and for
+selecting `staticlib` when a C-linkable archive is needed. The header is
+`include/lumod-c/lumod_dense.h`.
 
-```console
-cargo build --manifest-path c-ffi/Cargo.toml --release
+The final crate must also reference `rlumod` so the linker retains the C ABI:
+
+```toml
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+rlumod = { version = "0.1.2", features = ["c-ffi-one-based"] }
 ```
 
-The header is `c-ffi/include/lumod-c/lumod_dense.h`. The library is written to
-`c-ffi/target/release/librlumod_c_ffi.a` on Unix-like systems or
-`c-ffi/target/release/rlumod_c_ffi.lib` on Windows.
+```rust
+#![no_std]
+
+extern crate rlumod; // Force-link the exported C ABI.
+
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo<'_>) -> ! {
+    loop {
+        core::hint::spin_loop();
+    }
+}
+```
 
 This compatibility ABI uses caller-owned, one-based buffers. Element zero is
 an unused dummy; L needs `maxmod * maxmod + 1` doubles and U needs

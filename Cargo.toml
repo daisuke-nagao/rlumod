@@ -8,10 +8,13 @@ repository = "https://github.com/daisuke-nagao/rlumod"
 keywords = ["linear-algebra", "LUmod", "matrix", "no-std"]
 categories = ["algorithms", "no-std"]
 license = "MIT"
-exclude = ["/c-ffi"]
+
+[lib]
+crate-type = ["rlib"]
 
 [features]
 default = []
+c-ffi-one-based = ["lumod-c"]
 lumod-c = []
 
 [dependencies]

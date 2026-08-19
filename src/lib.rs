@@ -142,14 +142,13 @@
 //! `f32` and `f64` and return structural or solve errors instead of relying on
 //! unchecked preconditions.
 //!
-//! For a closer port, enable the `lumod-c` feature. The `lumod_c` module keeps the
-//! original names and mode arguments, but it is a zero-based Rust slice API,
-//! not a C ABI, and its public numerical functions use `f64`. New Rust code
-//! should normally prefer [`LuMod`]. The sparse C implementation has no
-//! corresponding API in this crate.
-//!
-//! The project repository also contains a separate `c-ffi` package that
-//! builds a `no_std` static library with the dense, one-based C ABI.
+//! For a closer Rust port, enable the `lumod-c` feature. The `lumod_c` module
+//! keeps the original names and mode arguments as a zero-based Rust slice API.
+//! Enable `c-ffi-one-based` for the dense, one-based C ABI; it also enables
+//! `lumod-c`. This crate remains an `rlib`; a final C-linkable crate must
+//! provide its own panic handler, select `staticlib`, and reference `rlumod` so
+//! the C ABI is retained. New Rust code should normally prefer [`LuMod`]. The
+//! sparse C implementation has no corresponding API in this crate.
 //!
 //! # Runnable examples
 //!
@@ -178,6 +177,9 @@ wasm_bindgen_test_configure!(run_in_browser);
 mod algorithm;
 mod api;
 pub use api::*;
+
+#[cfg(feature = "c-ffi-one-based")]
+pub mod ffi;
 
 #[cfg(feature = "lumod-c")]
 pub mod lumod_c;

@@ -1,5 +1,5 @@
 use super::*;
-use rlumod::lumod_c as rust;
+use crate::lumod_c as rust;
 
 const CANARY: f64 = 123_456.0;
 

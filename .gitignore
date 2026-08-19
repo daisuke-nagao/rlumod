@@ -1,3 +1,5 @@
 /target
+/c-ffi/target/
+/tests/staticlib/target/
 /scripts/__pycache__/
 Cargo.lock

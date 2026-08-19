@@ -1,6 +1,6 @@
 [package]
-name = "rlumod-c-ffi"
-version = "0.1.2"
+name = "rlumod-staticlib-consumer"
+version = "0.0.0"
 edition = "2024"
 rust-version = "1.85"
 publish = false
@@ -9,7 +9,7 @@ publish = false
 crate-type = ["staticlib"]
 
 [dependencies]
-rlumod = { path = "..", features = ["lumod-c"] }
+rlumod = { path = "../..", features = ["c-ffi-one-based"] }
 
 [profile.dev]
 panic = "abort"
