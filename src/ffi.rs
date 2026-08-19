@@ -12,7 +12,7 @@ use core::ffi::{c_double, c_int};
 use core::mem::{align_of, size_of};
 use core::slice;
 
-use crate::lumod_c as rust;
+use crate::lumod_c;
 
 fn element_count_fits_slice(length: usize) -> bool {
     length <= isize::MAX as usize / size_of::<c_double>()
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn LUmod(
     }) else {
         return;
     };
-    rust::LUmod(mode, maxmod, n, krow, kcol, l, u, y, z, w);
+    lumod_c::LUmod(mode, maxmod, n, krow, kcol, l, u, y, z, w);
 }
 
 /// Multiplies a vector by a dense one-based L factor.
@@ -169,7 +169,7 @@ pub unsafe extern "C" fn Lprod(
     }) else {
         return;
     };
-    rust::Lprod(mode, maxmod, n, l, y, z);
+    lumod_c::Lprod(mode, maxmod, n, l, y, z);
 }
 
 /// Solves a dense one-based upper-triangular system in place.
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn Usolve(
     else {
         return;
     };
-    rust::Usolve(mode, maxmod, n, u, y);
+    lumod_c::Usolve(mode, maxmod, n, u, y);
 }
 
 #[cfg(test)]

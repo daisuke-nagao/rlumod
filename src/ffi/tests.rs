@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 use super::*;
-use crate::lumod_c as rust;
+use crate::lumod_c;
 
 const CANARY: f64 = 123_456.0;
 
@@ -18,13 +18,13 @@ fn run_rust_lifecycle(l: &mut [f64], u: &mut [f64], y: &mut [f64], z: &mut [f64]
     ] {
         y[..n].copy_from_slice(row);
         z[..n].copy_from_slice(column);
-        rust::LUmod(1, 3, n as i32, -1, -1, l, u, y, z, w);
+        lumod_c::LUmod(1, 3, n as i32, -1, -1, l, u, y, z, w);
     }
     y.copy_from_slice(&[2.0, 7.0, 1.0]);
-    rust::LUmod(3, 3, 3, 1, -1, l, u, y, z, w);
+    lumod_c::LUmod(3, 3, 3, 1, -1, l, u, y, z, w);
     z.copy_from_slice(&[8.0, 2.0, 1.0]);
-    rust::LUmod(2, 3, 3, -1, 0, l, u, y, z, w);
-    rust::LUmod(4, 3, 3, 0, 1, l, u, y, z, w);
+    lumod_c::LUmod(2, 3, 3, -1, 0, l, u, y, z, w);
+    lumod_c::LUmod(4, 3, 3, 0, 1, l, u, y, z, w);
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn exports_one_based_lifecycle_and_solve_abi() {
 
     let mut expected_solution = [9.0, 11.0];
     let mut expected_work = [0.0; 2];
-    rust::Lprod(
+    lumod_c::Lprod(
         1,
         3,
         2,
@@ -124,7 +124,7 @@ fn exports_one_based_lifecycle_and_solve_abi() {
         &mut expected_work,
     );
     expected_solution.copy_from_slice(&expected_work);
-    rust::Usolve(1, 3, 2, &mut expected_u, &mut expected_solution);
+    lumod_c::Usolve(1, 3, 2, &mut expected_u, &mut expected_solution);
 
     let mut solution = [CANARY, 9.0, 11.0, CANARY];
     let mut work = [CANARY, 0.0, 0.0, CANARY];
@@ -147,8 +147,8 @@ fn exports_one_based_lifecycle_and_solve_abi() {
     );
 
     let mut expected_transpose = [7.0, 13.0];
-    rust::Usolve(2, 3, 2, &mut expected_u, &mut expected_transpose);
-    rust::Lprod(
+    lumod_c::Usolve(2, 3, 2, &mut expected_u, &mut expected_transpose);
+    lumod_c::Lprod(
         2,
         3,
         2,
