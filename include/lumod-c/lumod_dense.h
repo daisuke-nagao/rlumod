@@ -21,13 +21,7 @@ void LUmod(int mode, int maxmod, int n, int krow, int kcol,
            double *L, double *U, double *y, double *z, double *w);
 void Lprod(int mode, int maxmod, int n,
            double *L, double *y, double *z);
-void LUforw(int first, int last, int n, int nu, int maxmod,
-            double eps, double *L, double *U, double *y);
-void LUback(int first, int *last, int n, int nu, int maxmod,
-            double eps, double *L, double *U, double *y, double *z);
 void Usolve(int mode, int maxmod, int n, double *U, double *y);
-void elm(int first, int last, double *x, double *y, double cs, double sn);
-void elmgen(double *x, double *y, double eps, double *cs, double *sn);
 
 #ifdef __cplusplus
 }

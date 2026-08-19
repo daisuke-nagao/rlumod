@@ -14,7 +14,6 @@ int main(void) {
 #ifdef LUMOD_C_ORIGINAL
   init_BLAS();
 #endif
-  const double eps = 2.22e-16;
   double L[6] = {91.0, 0.0, 0.0, 0.0, 0.0, 92.0};
   double U[5] = {93.0, 0.0, 0.0, 0.0, 94.0};
   double y[4] = {95.0, 0.0, 0.0, 96.0};
@@ -64,36 +63,6 @@ int main(void) {
     Lprod(2, 2, 2, L, rhs, work);
     if (!close_enough(work[1], 1.0) || !close_enough(work[2], 2.0)) {
       return 2;
-    }
-  }
-
-  {
-    double lower[6] = {109.0, 1.0, 0.0, 0.0, 1.0, 110.0};
-    double upper[5] = {111.0, 1.0, 0.0, 1.0, 112.0};
-    double spike[4] = {113.0, 2.0, 3.0, 114.0};
-    double column[4] = {115.0, 1.0, 2.0, 116.0};
-    int last = 2;
-    LUforw(1, 2, 2, 2, 2, eps, lower, upper, spike);
-    LUback(1, &last, 2, 2, 2, eps, lower, upper, spike, column);
-    if (last < 1 || last > 2 || lower[0] != 109.0 || lower[5] != 110.0 ||
-        upper[0] != 111.0 || upper[4] != 112.0) {
-      return 3;
-    }
-  }
-
-  {
-    double first[4] = {119.0, 1.0, 2.0, 117.0};
-    double second[4] = {120.0, 3.0, 4.0, 118.0};
-    double scalar_x = 4.0;
-    double scalar_y = 2.0;
-    double cs = 0.0;
-    double sn = 0.0;
-    elm(7, 2, first, second, -1.0, 0.5);
-    elmgen(&scalar_x, &scalar_y, eps, &cs, &sn);
-    if (first[0] != 119.0 || first[3] != 117.0 || second[0] != 120.0 ||
-        second[3] != 118.0 || !close_enough(scalar_x, 4.0) ||
-        scalar_y != 0.0 || cs != 0.0 || !close_enough(sn, -0.5)) {
-      return 4;
     }
   }
 

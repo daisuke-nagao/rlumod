@@ -129,9 +129,14 @@ jobs:
           fi
           archive="tests/staticlib/target/release/librlumod_staticlib_consumer.a"
           nm -g --defined-only "${archive}" | awk '{print $3}' > tests/staticlib/target/symbols.txt
-          for symbol in LUmod Lprod LUforw LUback Usolve elm elmgen; do
+          for symbol in LUmod Lprod Usolve; do
             grep -Fx "${symbol}" tests/staticlib/target/symbols.txt
           done
+          for symbol in LUforw LUback elm elmgen; do
+            ! grep -Fx "${symbol}" tests/staticlib/target/symbols.txt
+          done
+          ! grep -Eq '(^|[^[:alnum:]_])(LUforw|LUback|elm|elmgen)([^[:alnum:]_]|$)' \
+            include/lumod-c/lumod_dense.h
 
   msrv:
     name: Test MSRV (Rust 1.85)

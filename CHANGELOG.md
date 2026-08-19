@@ -9,12 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Integrated the complete seven-function dense `lumod-c` ABI into the optional
-  `c-ffi-one-based` feature with its original one-based storage convention.
-  The feature enables `lumod-c`; the crate remains an `rlib`, while downstream
-  integration owns the panic handler and final `staticlib` crate type.
-- Exposed the low-level `elm` and `elmgen` operations through the optional
-  Rust `lumod-c` slice API.
+- Integrated the user-facing `LUmod`, `Lprod`, and `Usolve` C entry points into
+  the optional `c-ffi-one-based` feature with their original one-based storage
+  convention. The feature enables `lumod-c`; the crate remains an `rlib`, while
+  downstream integration owns the panic handler and final `staticlib` crate
+  type.
+
+### Changed
+
+- Restricted the `lumod-c` Rust API to `LUmod`, `Lprod`, and `Usolve`, removing
+  `LUforw`, `LUback`, `elm`, and `elmgen`, and made the C FFI module link-only.
+  Removing the previously released `LUforw` and `LUback` functions is a
+  breaking change from 0.1.2.
 
 ## [0.1.2] - 2026-08-18
 

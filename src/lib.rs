@@ -3,6 +3,16 @@
 
 #![no_std]
 #![warn(missing_docs)]
+#![cfg_attr(
+    feature = "c-ffi-one-based",
+    doc = r#"
+The C ABI is exported for linking, not as a Rust raw-pointer API.
+
+```compile_fail,E0603
+let _ = rlumod::ffi::LUmod;
+```
+"#
+)]
 
 //! A safe, allocation-free Rust adaptation of the LUmod numerical software
 //! made available by Stanford's Systems Optimization Laboratory.
@@ -179,7 +189,7 @@ mod api;
 pub use api::*;
 
 #[cfg(feature = "c-ffi-one-based")]
-pub mod ffi;
+mod ffi;
 
 #[cfg(feature = "lumod-c")]
 pub mod lumod_c;

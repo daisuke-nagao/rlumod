@@ -16,7 +16,8 @@ The crate provides:
   updates or solves; and
 - an optional `lumod-c` feature exposing a lower-level Rust slice API with the
   original LUmod names and mode arguments; and
-- an optional `c-ffi-one-based` feature exposing the original one-based C ABI.
+- an optional `c-ffi-one-based` feature exposing one-based C entry points for
+  `LUmod`, `Lprod`, and `Usolve`.
 
 `rlumod` supports dense square matrices only. It does not provide sparse
 matrix storage or a one-shot factorization API.
@@ -29,12 +30,12 @@ cargo add rlumod
 
 ## C FFI
 
-The optional `c-ffi-one-based` feature includes a dense, one-based C ABI
-compatible with the seven functions declared by `lumod-c/lumod_dense.h`. It
-automatically enables the lower-level `lumod-c` Rust API. `rlumod` remains an
-`rlib`; the final `no_std` crate is responsible for its panic handler and for
-selecting `staticlib` when a C-linkable archive is needed. The header is
-`include/lumod-c/lumod_dense.h`.
+The optional `c-ffi-one-based` feature includes dense, one-based C entry points
+for `LUmod`, `Lprod`, and `Usolve`, as declared by
+`lumod-c/lumod_dense.h`. It automatically enables the lower-level `lumod-c`
+Rust API. `rlumod` remains an `rlib`; the final `no_std` crate is responsible
+for its panic handler and for selecting `staticlib` when a C-linkable archive
+is needed. The header is `include/lumod-c/lumod_dense.h`.
 
 The final crate must also reference `rlumod` so the linker retains the C ABI:
 
