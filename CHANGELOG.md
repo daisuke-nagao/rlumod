@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-20
+
 ### Added
 
 - Integrated the user-facing `LUmod`, `Lprod`, and `Usolve` C entry points into
@@ -52,7 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An optional `lumod-c` feature providing a lower-level compatibility API.
 - Automated Keep a Changelog validation for commits that modify this file.
 
-[Unreleased]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/daisuke-nagao/rlumod/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/daisuke-nagao/rlumod/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/daisuke-nagao/rlumod/releases/tag/v0.1.0
