@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the independent `c-ffi-zero-based` feature with stable checked C ABI
+  descriptors and status values for the complete `f32` and `f64` safe-API
+  lifecycle.
+
 ## [0.2.0] - 2026-08-20
 
 ### Added

@@ -9,7 +9,7 @@ publish = false
 crate-type = ["staticlib"]
 
 [dependencies]
-rlumod = { path = "../..", features = ["c-ffi-one-based"] }
+rlumod = { path = "../..", features = ["c-ffi-one-based", "c-ffi-zero-based"] }
 
 [profile.dev]
 panic = "abort"

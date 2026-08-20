@@ -13,6 +13,16 @@ let _ = rlumod::ffi::LUmod;
 ```
 "#
 )]
+#![cfg_attr(
+    feature = "c-ffi-zero-based",
+    doc = r#"
+The checked C ABI is exported for linking, not as a Rust raw-pointer API.
+
+```compile_fail,E0603
+let _ = rlumod::ffi_zero_based::rlumod_storage_lengths;
+```
+"#
+)]
 
 //! A safe, allocation-free Rust adaptation of the LUmod numerical software
 //! made available by Stanford's Systems Optimization Laboratory.
@@ -154,6 +164,9 @@ let _ = rlumod::ffi::LUmod;
 //!
 //! For a closer Rust port, enable the `lumod-c` feature. The `lumod_c` module
 //! keeps the original names and mode arguments as a zero-based Rust slice API.
+//! Enable `c-ffi-zero-based` for the checked, zero-based C ABI corresponding
+//! to the safe API. It supports `f32` and `f64` and is independent of
+//! `lumod-c` and `c-ffi-one-based`.
 //! Enable `c-ffi-one-based` for the dense, one-based C ABI; it also enables
 //! `lumod-c`. This crate remains an `rlib`; a final C-linkable crate must
 //! provide its own panic handler, select `staticlib`, and reference `rlumod` so
@@ -190,6 +203,9 @@ pub use api::*;
 
 #[cfg(feature = "c-ffi-one-based")]
 mod ffi;
+
+#[cfg(feature = "c-ffi-zero-based")]
+mod ffi_zero_based;
 
 #[cfg(feature = "lumod-c")]
 pub mod lumod_c;

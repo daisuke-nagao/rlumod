@@ -40,7 +40,9 @@ jobs:
         run: cargo +stable package
       - name: Verify C FFI header is included in the Rust package
         shell: bash
-        run: cargo +stable package --list | grep -Fx 'include/lumod-c/lumod_dense.h'
+        run: |
+          cargo +stable package --list | grep -Fx 'include/lumod-c/lumod_dense.h'
+          cargo +stable package --list | grep -Fx 'include/rlumod/rlumod.h'
 
   native-tests:
     name: Test (${{ matrix.runner }})
@@ -127,11 +129,36 @@ jobs:
             grep -Ex 'LUmod|Lprod|LUforw|LUback|Usolve|elm|elmgen'; then
             exit 1
           fi
+          CARGO_TARGET_DIR=target/feature-gate-one cargo +stable rustc --release \
+            --no-default-features --features c-ffi-one-based --lib -- --emit=obj
+          nm -g --defined-only target/feature-gate-one/release/deps/rlumod-*.o | \
+            awk '{print $3}' > target/feature-gate-one/symbols.txt
+          for symbol in LUmod Lprod Usolve; do
+            grep -Fx "${symbol}" target/feature-gate-one/symbols.txt
+          done
+          ! grep -E '^rlumod_' target/feature-gate-one/symbols.txt
+          CARGO_TARGET_DIR=target/feature-gate-zero cargo +stable rustc --release \
+            --no-default-features --features c-ffi-zero-based --lib -- --emit=obj
+          nm -g --defined-only target/feature-gate-zero/release/deps/rlumod-*.o | \
+            awk '{print $3}' > target/feature-gate-zero/symbols.txt
+          for operation in factor_from_storage workspace_init push replace_row \
+            replace_column remove solve_in_place solve_transpose_in_place; do
+            grep -Fx "rlumod_f32_${operation}" target/feature-gate-zero/symbols.txt
+            grep -Fx "rlumod_f64_${operation}" target/feature-gate-zero/symbols.txt
+          done
+          grep -Fx rlumod_storage_lengths target/feature-gate-zero/symbols.txt
+          ! grep -Ex 'LUmod|Lprod|Usolve' target/feature-gate-zero/symbols.txt
           archive="tests/staticlib/target/release/librlumod_staticlib_consumer.a"
           nm -g --defined-only "${archive}" | awk '{print $3}' > tests/staticlib/target/symbols.txt
           for symbol in LUmod Lprod Usolve; do
             grep -Fx "${symbol}" tests/staticlib/target/symbols.txt
           done
+          for operation in factor_from_storage workspace_init push replace_row \
+            replace_column remove solve_in_place solve_transpose_in_place; do
+            grep -Fx "rlumod_f32_${operation}" tests/staticlib/target/symbols.txt
+            grep -Fx "rlumod_f64_${operation}" tests/staticlib/target/symbols.txt
+          done
+          grep -Fx rlumod_storage_lengths tests/staticlib/target/symbols.txt
           for symbol in LUforw LUback elm elmgen; do
             ! grep -Fx "${symbol}" tests/staticlib/target/symbols.txt
           done
