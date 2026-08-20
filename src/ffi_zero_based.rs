@@ -17,6 +17,7 @@ use crate::{
 };
 
 type Status = i32;
+type StatusResult<T = ()> = Result<T, Status>;
 
 const RLUMOD_STATUS_OK: Status = 0;
 const RLUMOD_STATUS_NULL_POINTER: Status = 1;
@@ -32,6 +33,10 @@ const RLUMOD_STATUS_LENGTH_MISMATCH: Status = 10;
 const RLUMOD_STATUS_INSUFFICIENT_WORKSPACE: Status = 11;
 const RLUMOD_STATUS_SINGULAR: Status = 12;
 const RLUMOD_STATUS_NON_FINITE_DIAGONAL: Status = 13;
+
+fn status(result: StatusResult) -> Status {
+    result.map_or_else(|status| status, |()| RLUMOD_STATUS_OK)
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -107,7 +112,7 @@ impl Region {
     }
 }
 
-fn region<T>(pointer: *const T, length: usize) -> Result<Option<Region>, Status> {
+fn region<T>(pointer: *const T, length: usize) -> StatusResult<Option<Region>> {
     if length == 0 {
         return Ok(None);
     }
@@ -130,14 +135,22 @@ fn region<T>(pointer: *const T, length: usize) -> Result<Option<Region>, Status>
     Ok(Some(Region { start, end }))
 }
 
-fn required_region<T>(pointer: *const T) -> Result<Region, Status> {
+fn required_region<T>(pointer: *const T) -> StatusResult<Region> {
     region(pointer, 1)?.ok_or(RLUMOD_STATUS_NULL_POINTER)
+}
+
+fn optional_region<T>(pointer: *const T) -> StatusResult<Option<Region>> {
+    if pointer.is_null() {
+        Ok(None)
+    } else {
+        required_region(pointer).map(Some)
+    }
 }
 
 fn ensure_disjoint<const N: usize>(
     regions: [Option<Region>; N],
     allowed_overlap: &[(usize, usize)],
-) -> Result<(), Status> {
+) -> StatusResult {
     for left in 0..N {
         for right in (left + 1)..N {
             if allowed_overlap
@@ -157,7 +170,7 @@ fn ensure_disjoint<const N: usize>(
     Ok(())
 }
 
-unsafe fn read_descriptor<T: Copy>(pointer: *const T) -> Result<(T, Region), Status> {
+unsafe fn read_descriptor<T: Copy>(pointer: *const T) -> StatusResult<(T, Region)> {
     let descriptor_region = required_region(pointer)?;
     // SAFETY: The C contract requires a live initialized descriptor. Null and
     // alignment were checked before this unavoidable FFI-boundary read.
@@ -204,7 +217,7 @@ fn update_status(error: UpdateError) -> Status {
 
 fn factor_regions<T: Real>(
     descriptor: Factor<T>,
-) -> Result<(Option<Region>, Option<Region>), Status> {
+) -> StatusResult<(Option<Region>, Option<Region>)> {
     let lengths = storage_lengths(descriptor.capacity).map_err(storage_status)?;
     if descriptor.dimension > descriptor.capacity {
         return Err(RLUMOD_STATUS_INVALID_DIMENSION);
@@ -220,7 +233,7 @@ fn factor_regions<T: Real>(
 
 type WorkspaceRegions = (Option<Region>, Option<Region>, Option<Region>);
 
-fn workspace_regions<T: Copy>(descriptor: Work<T>) -> Result<WorkspaceRegions, Status> {
+fn workspace_regions<T: Copy>(descriptor: Work<T>) -> StatusResult<WorkspaceRegions> {
     if descriptor.y_len != descriptor.z_len || descriptor.y_len != descriptor.w_len {
         return Err(RLUMOD_STATUS_INSUFFICIENT_STORAGE);
     }
@@ -231,7 +244,7 @@ fn workspace_regions<T: Copy>(descriptor: Work<T>) -> Result<WorkspaceRegions, S
     ))
 }
 
-unsafe fn make_factor<'a, T: Real>(descriptor: Factor<T>) -> Result<LuMod<'a, T>, Status> {
+unsafe fn make_factor<'a, T: Real>(descriptor: Factor<T>) -> StatusResult<LuMod<'a, T>> {
     // SAFETY: Descriptor regions and aliases were validated by the caller.
     let l = unsafe { mutable_slice(descriptor.l, descriptor.l_len) };
     // SAFETY: Descriptor regions and aliases were validated by the caller.
@@ -239,7 +252,7 @@ unsafe fn make_factor<'a, T: Real>(descriptor: Factor<T>) -> Result<LuMod<'a, T>
     LuMod::from_storage(descriptor.dimension, descriptor.capacity, l, u).map_err(storage_status)
 }
 
-unsafe fn make_workspace<'a, T: Copy>(descriptor: Work<T>) -> Result<Workspace<'a, T>, Status> {
+unsafe fn make_workspace<'a, T: Copy>(descriptor: Work<T>) -> StatusResult<Workspace<'a, T>> {
     // SAFETY: Descriptor regions and aliases were validated by the caller.
     let y = unsafe { mutable_slice(descriptor.y, descriptor.y_len) };
     // SAFETY: Descriptor regions and aliases were validated by the caller.
@@ -257,11 +270,8 @@ unsafe fn factor_from_storage_impl<T: Real>(
     l_len: usize,
     u: *mut T,
     u_len: usize,
-) -> Status {
-    let output_region = match required_region(output) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
+) -> StatusResult {
+    let output_region = required_region(output)?;
     let descriptor = Factor {
         dimension,
         capacity,
@@ -270,20 +280,13 @@ unsafe fn factor_from_storage_impl<T: Real>(
         u,
         u_len,
     };
-    let (l_region, u_region) = match factor_regions(descriptor) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    if let Err(status) = ensure_disjoint([Some(output_region), l_region, u_region], &[]) {
-        return status;
-    }
+    let (l_region, u_region) = factor_regions(descriptor)?;
+    ensure_disjoint([Some(output_region), l_region, u_region], &[])?;
     // SAFETY: All descriptor regions and aliases have been validated.
-    if let Err(status) = unsafe { make_factor(descriptor) } {
-        return status;
-    }
+    unsafe { make_factor(descriptor)? };
     // SAFETY: `output` is valid, aligned, and disjoint from adopted storage.
     unsafe { output.write(descriptor) };
-    RLUMOD_STATUS_OK
+    Ok(())
 }
 
 unsafe fn workspace_init_impl<T: Copy>(
@@ -294,11 +297,8 @@ unsafe fn workspace_init_impl<T: Copy>(
     z_len: usize,
     w: *mut T,
     w_len: usize,
-) -> Status {
-    let output_region = match required_region(output) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
+) -> StatusResult {
+    let output_region = required_region(output)?;
     let descriptor = Work {
         y,
         y_len,
@@ -307,55 +307,86 @@ unsafe fn workspace_init_impl<T: Copy>(
         w,
         w_len,
     };
-    let (y_region, z_region, w_region) = match workspace_regions(descriptor) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    if let Err(status) = ensure_disjoint([Some(output_region), y_region, z_region, w_region], &[]) {
-        return status;
-    }
+    let (y_region, z_region, w_region) = workspace_regions(descriptor)?;
+    ensure_disjoint([Some(output_region), y_region, z_region, w_region], &[])?;
     // SAFETY: All descriptor regions and aliases have been validated.
-    if let Err(status) = unsafe { make_workspace(descriptor) } {
-        return status;
-    }
+    unsafe { make_workspace(descriptor)? };
     // SAFETY: `output` is valid, aligned, and disjoint from workspace buffers.
     unsafe { output.write(descriptor) };
-    RLUMOD_STATUS_OK
+    Ok(())
 }
 
-type UpdateParts<T> = (
-    Factor<T>,
-    Work<T>,
-    Region,
-    Region,
-    Option<Region>,
-    Option<Region>,
-    Option<Region>,
-    Option<Region>,
-    Option<Region>,
-);
+struct UpdateContext<T> {
+    factor: Factor<T>,
+    workspace: Work<T>,
+    regions: UpdateRegions,
+}
 
-unsafe fn update_parts<T: Real>(
-    factor_pointer: *mut Factor<T>,
-    workspace_pointer: *const Work<T>,
-) -> Result<UpdateParts<T>, Status> {
-    // SAFETY: Descriptors are read only after null/alignment validation.
-    let (factor, factor_descriptor_region) = unsafe { read_descriptor(factor_pointer) }?;
-    // SAFETY: Descriptors are read only after null/alignment validation.
-    let (workspace, workspace_descriptor_region) = unsafe { read_descriptor(workspace_pointer) }?;
-    let (l_region, u_region) = factor_regions(factor)?;
-    let (y_region, z_region, w_region) = workspace_regions(workspace)?;
-    Ok((
-        factor,
-        workspace,
-        factor_descriptor_region,
-        workspace_descriptor_region,
-        l_region,
-        u_region,
-        y_region,
-        z_region,
-        w_region,
-    ))
+struct UpdateRegions {
+    factor_descriptor: Region,
+    workspace_descriptor: Region,
+    l: Option<Region>,
+    u: Option<Region>,
+    y: Option<Region>,
+    z: Option<Region>,
+    w: Option<Region>,
+}
+
+impl<T: Real> UpdateContext<T> {
+    unsafe fn from_raw(
+        factor_pointer: *mut Factor<T>,
+        workspace_pointer: *const Work<T>,
+    ) -> StatusResult<Self> {
+        // SAFETY: Descriptors are read only after null/alignment validation.
+        let (factor, factor_descriptor_region) = unsafe { read_descriptor(factor_pointer) }?;
+        // SAFETY: Descriptors are read only after null/alignment validation.
+        let (workspace, workspace_descriptor_region) =
+            unsafe { read_descriptor(workspace_pointer) }?;
+        let (l_region, u_region) = factor_regions(factor)?;
+        let (y_region, z_region, w_region) = workspace_regions(workspace)?;
+        Ok(Self {
+            factor,
+            workspace,
+            regions: UpdateRegions {
+                factor_descriptor: factor_descriptor_region,
+                workspace_descriptor: workspace_descriptor_region,
+                l: l_region,
+                u: u_region,
+                y: y_region,
+                z: z_region,
+                w: w_region,
+            },
+        })
+    }
+
+    fn validate_aliases(
+        &self,
+        additional_regions: [Option<Region>; 2],
+        allowed_overlap: &[(usize, usize)],
+    ) -> StatusResult {
+        ensure_disjoint(
+            [
+                Some(self.regions.factor_descriptor),
+                Some(self.regions.workspace_descriptor),
+                self.regions.l,
+                self.regions.u,
+                self.regions.y,
+                self.regions.z,
+                self.regions.w,
+                additional_regions[0],
+                additional_regions[1],
+            ],
+            allowed_overlap,
+        )
+    }
+
+    unsafe fn make_parts<'a>(self) -> StatusResult<(LuMod<'a, T>, Workspace<'a, T>)> {
+        // SAFETY: The operation validated all regions and conflicting aliases.
+        let factor = unsafe { make_factor(self.factor) }?;
+        // SAFETY: The operation validated all regions and conflicting aliases.
+        let workspace = unsafe { make_workspace(self.workspace) }?;
+        Ok((factor, workspace))
+    }
 }
 
 unsafe fn push_impl<T: Real>(
@@ -366,68 +397,27 @@ unsafe fn push_impl<T: Real>(
     column_len: usize,
     diagonal: T,
     workspace_pointer: *const Work<T>,
-) -> Status {
-    let (
-        factor_descriptor,
-        workspace_descriptor,
-        factor_descriptor_region,
-        workspace_descriptor_region,
-        l_region,
-        u_region,
-        y_region,
-        z_region,
-        w_region,
-    ) = match unsafe { update_parts(factor_pointer, workspace_pointer) } {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    let row_region = match region(row, row_len) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    let column_region = match region(column, column_len) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    if let Err(status) = ensure_disjoint(
-        [
-            Some(factor_descriptor_region),
-            Some(workspace_descriptor_region),
-            l_region,
-            u_region,
-            y_region,
-            z_region,
-            w_region,
-            row_region,
-            column_region,
-        ],
-        &[(7, 8)],
-    ) {
-        return status;
-    }
+) -> StatusResult {
+    // SAFETY: Raw descriptors retain the caller's contract.
+    let context = unsafe { UpdateContext::from_raw(factor_pointer, workspace_pointer) }?;
+    let row_region = region(row, row_len)?;
+    let column_region = region(column, column_len)?;
+    context.validate_aliases([row_region, column_region], &[(7, 8)])?;
     let dimension = {
         // SAFETY: Every region and conflicting alias was validated above.
-        let mut factor = match unsafe { make_factor(factor_descriptor) } {
-            Ok(value) => value,
-            Err(status) => return status,
-        };
-        // SAFETY: Every region and conflicting alias was validated above.
-        let mut workspace = match unsafe { make_workspace(workspace_descriptor) } {
-            Ok(value) => value,
-            Err(status) => return status,
-        };
+        let (mut factor, mut workspace) = unsafe { context.make_parts() }?;
         // SAFETY: Input regions were validated and may alias only one another.
         let row = unsafe { shared_slice(row, row_len) };
         // SAFETY: Input regions were validated and may alias only one another.
         let column = unsafe { shared_slice(column, column_len) };
-        if let Err(error) = factor.push(row, column, diagonal, &mut workspace) {
-            return update_status(error);
-        }
+        factor
+            .push(row, column, diagonal, &mut workspace)
+            .map_err(update_status)?;
         factor.dimension()
     };
     // SAFETY: The descriptor is valid and disjoint from all live buffer regions.
     unsafe { ptr::addr_of_mut!((*factor_pointer).dimension).write(dimension) };
-    RLUMOD_STATUS_OK
+    Ok(())
 }
 
 #[derive(Clone, Copy)]
@@ -443,57 +433,20 @@ unsafe fn replace_impl<T: Real>(
     values_len: usize,
     workspace_pointer: *const Work<T>,
     replacement: Replacement,
-) -> Status {
-    let (
-        factor_descriptor,
-        workspace_descriptor,
-        factor_descriptor_region,
-        workspace_descriptor_region,
-        l_region,
-        u_region,
-        y_region,
-        z_region,
-        w_region,
-    ) = match unsafe { update_parts(factor_pointer, workspace_pointer) } {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    let values_region = match region(values, values_len) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    if let Err(status) = ensure_disjoint(
-        [
-            Some(factor_descriptor_region),
-            Some(workspace_descriptor_region),
-            l_region,
-            u_region,
-            y_region,
-            z_region,
-            w_region,
-            values_region,
-        ],
-        &[],
-    ) {
-        return status;
-    }
+) -> StatusResult {
+    // SAFETY: Raw descriptors retain the caller's contract.
+    let context = unsafe { UpdateContext::from_raw(factor_pointer, workspace_pointer) }?;
+    let values_region = region(values, values_len)?;
+    context.validate_aliases([values_region, None], &[])?;
     // SAFETY: Every region and conflicting alias was validated above.
-    let mut factor = match unsafe { make_factor(factor_descriptor) } {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    // SAFETY: Every region and conflicting alias was validated above.
-    let mut workspace = match unsafe { make_workspace(workspace_descriptor) } {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
+    let (mut factor, mut workspace) = unsafe { context.make_parts() }?;
     // SAFETY: The immutable input region was validated above.
     let values = unsafe { shared_slice(values, values_len) };
-    let result = match replacement {
+    match replacement {
         Replacement::Row => factor.replace_row(RowIndex(index), values, &mut workspace),
         Replacement::Column => factor.replace_column(ColumnIndex(index), values, &mut workspace),
-    };
-    result.map_or_else(update_status, |()| RLUMOD_STATUS_OK)
+    }
+    .map_err(update_status)
 }
 
 unsafe fn remove_impl<T: Real>(
@@ -502,59 +455,17 @@ unsafe fn remove_impl<T: Real>(
     column: usize,
     workspace_pointer: *const Work<T>,
     output: *mut FfiRemoval,
-) -> Status {
-    let (
-        factor_descriptor,
-        workspace_descriptor,
-        factor_descriptor_region,
-        workspace_descriptor_region,
-        l_region,
-        u_region,
-        y_region,
-        z_region,
-        w_region,
-    ) = match unsafe { update_parts(factor_pointer, workspace_pointer) } {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    let output_region = if output.is_null() {
-        None
-    } else {
-        match required_region(output) {
-            Ok(value) => Some(value),
-            Err(status) => return status,
-        }
-    };
-    if let Err(status) = ensure_disjoint(
-        [
-            Some(factor_descriptor_region),
-            Some(workspace_descriptor_region),
-            l_region,
-            u_region,
-            y_region,
-            z_region,
-            w_region,
-            output_region,
-        ],
-        &[],
-    ) {
-        return status;
-    }
+) -> StatusResult {
+    // SAFETY: Raw descriptors retain the caller's contract.
+    let context = unsafe { UpdateContext::from_raw(factor_pointer, workspace_pointer) }?;
+    let output_region = optional_region(output)?;
+    context.validate_aliases([output_region, None], &[])?;
     let (removal, dimension) = {
         // SAFETY: Every region and conflicting alias was validated above.
-        let mut factor = match unsafe { make_factor(factor_descriptor) } {
-            Ok(value) => value,
-            Err(status) => return status,
-        };
-        // SAFETY: Every region and conflicting alias was validated above.
-        let mut workspace = match unsafe { make_workspace(workspace_descriptor) } {
-            Ok(value) => value,
-            Err(status) => return status,
-        };
-        let removal = match factor.remove(RowIndex(row), ColumnIndex(column), &mut workspace) {
-            Ok(value) => value,
-            Err(error) => return update_status(error),
-        };
+        let (mut factor, mut workspace) = unsafe { context.make_parts() }?;
+        let removal = factor
+            .remove(RowIndex(row), ColumnIndex(column), &mut workspace)
+            .map_err(update_status)?;
         (removal, factor.dimension())
     };
     // SAFETY: The descriptor is valid and no buffer references remain live.
@@ -563,7 +474,7 @@ unsafe fn remove_impl<T: Real>(
         // SAFETY: Optional output was validated and is disjoint from all regions.
         unsafe { output.write(ffi_removal(removal)) };
     }
-    RLUMOD_STATUS_OK
+    Ok(())
 }
 
 fn ffi_removal(removal: Removal) -> FfiRemoval {
@@ -581,30 +492,13 @@ unsafe fn solve_impl<T: Real>(
     rhs_len: usize,
     error_index: *mut usize,
     transpose: bool,
-) -> Status {
+) -> StatusResult {
     // SAFETY: Descriptor is read only after null/alignment validation.
-    let (factor_descriptor, factor_descriptor_region) =
-        match unsafe { read_descriptor(factor_pointer) } {
-            Ok(value) => value,
-            Err(status) => return status,
-        };
-    let (l_region, u_region) = match factor_regions(factor_descriptor) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    let rhs_region = match region(rhs, rhs_len) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    let error_region = if error_index.is_null() {
-        None
-    } else {
-        match required_region(error_index) {
-            Ok(value) => Some(value),
-            Err(status) => return status,
-        }
-    };
-    if let Err(status) = ensure_disjoint(
+    let (factor_descriptor, factor_descriptor_region) = unsafe { read_descriptor(factor_pointer) }?;
+    let (l_region, u_region) = factor_regions(factor_descriptor)?;
+    let rhs_region = region(rhs, rhs_len)?;
+    let error_region = optional_region(error_index)?;
+    ensure_disjoint(
         [
             Some(factor_descriptor_region),
             l_region,
@@ -613,15 +507,10 @@ unsafe fn solve_impl<T: Real>(
             error_region,
         ],
         &[],
-    ) {
-        return status;
-    }
+    )?;
     let result = {
         // SAFETY: Every region and conflicting alias was validated above.
-        let factor = match unsafe { make_factor(factor_descriptor) } {
-            Ok(value) => value,
-            Err(status) => return status,
-        };
+        let factor = unsafe { make_factor(factor_descriptor) }?;
         // SAFETY: The mutable RHS region was validated above.
         let rhs = unsafe { mutable_slice(rhs, rhs_len) };
         if transpose {
@@ -631,23 +520,38 @@ unsafe fn solve_impl<T: Real>(
         }
     };
     match result {
-        Ok(()) => RLUMOD_STATUS_OK,
-        Err(SolveError::LengthMismatch) => RLUMOD_STATUS_LENGTH_MISMATCH,
+        Ok(()) => Ok(()),
+        Err(SolveError::LengthMismatch) => Err(RLUMOD_STATUS_LENGTH_MISMATCH),
         Err(SolveError::Singular { index }) => {
             if !error_index.is_null() {
                 // SAFETY: Optional output was validated and factor references are dropped.
                 unsafe { error_index.write(index) };
             }
-            RLUMOD_STATUS_SINGULAR
+            Err(RLUMOD_STATUS_SINGULAR)
         }
         Err(SolveError::NonFiniteDiagonal { index }) => {
             if !error_index.is_null() {
                 // SAFETY: Optional output was validated and factor references are dropped.
                 unsafe { error_index.write(index) };
             }
-            RLUMOD_STATUS_NON_FINITE_DIAGONAL
+            Err(RLUMOD_STATUS_NON_FINITE_DIAGONAL)
         }
     }
+}
+
+unsafe fn storage_lengths_impl(capacity: usize, l: *mut usize, u: *mut usize) -> StatusResult {
+    let l_region = required_region(l)?;
+    let u_region = required_region(u)?;
+    if l_region.overlaps(u_region) {
+        return Err(RLUMOD_STATUS_OVERLAPPING_BUFFERS);
+    }
+    let lengths = storage_lengths(capacity).map_err(storage_status)?;
+    // SAFETY: Both outputs are valid, aligned, and disjoint.
+    unsafe {
+        l.write(lengths.l);
+        u.write(lengths.u);
+    }
+    Ok(())
 }
 
 #[unsafe(no_mangle)]
@@ -656,27 +560,8 @@ pub unsafe extern "C" fn rlumod_storage_lengths(
     l: *mut usize,
     u: *mut usize,
 ) -> Status {
-    let l_region = match required_region(l) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    let u_region = match required_region(u) {
-        Ok(value) => value,
-        Err(status) => return status,
-    };
-    if l_region.overlaps(u_region) {
-        return RLUMOD_STATUS_OVERLAPPING_BUFFERS;
-    }
-    let lengths = match storage_lengths(capacity) {
-        Ok(value) => value,
-        Err(error) => return storage_status(error),
-    };
-    // SAFETY: Both outputs are valid, aligned, and disjoint.
-    unsafe {
-        l.write(lengths.l);
-        u.write(lengths.u);
-    }
-    RLUMOD_STATUS_OK
+    // SAFETY: Raw output pointers retain the caller's contract.
+    status(unsafe { storage_lengths_impl(capacity, l, u) })
 }
 
 macro_rules! export_float_abi {
@@ -703,7 +588,9 @@ macro_rules! export_float_abi {
             u: *mut $ty,
             u_len: usize,
         ) -> Status {
-            unsafe { factor_from_storage_impl(output, dimension, capacity, l, l_len, u, u_len) }
+            status(unsafe {
+                factor_from_storage_impl(output, dimension, capacity, l, l_len, u, u_len)
+            })
         }
 
         #[unsafe(no_mangle)]
@@ -716,7 +603,7 @@ macro_rules! export_float_abi {
             w: *mut $ty,
             w_len: usize,
         ) -> Status {
-            unsafe { workspace_init_impl(output, y, y_len, z, z_len, w, w_len) }
+            status(unsafe { workspace_init_impl(output, y, y_len, z, z_len, w, w_len) })
         }
 
         #[unsafe(no_mangle)]
@@ -729,11 +616,11 @@ macro_rules! export_float_abi {
             diagonal: $ty,
             workspace: *const $workspace,
         ) -> Status {
-            unsafe {
+            status(unsafe {
                 push_impl(
                     factor, row, row_len, column, column_len, diagonal, workspace,
                 )
-            }
+            })
         }
 
         #[unsafe(no_mangle)]
@@ -744,7 +631,9 @@ macro_rules! export_float_abi {
             values_len: usize,
             workspace: *const $workspace,
         ) -> Status {
-            unsafe { replace_impl(factor, row, values, values_len, workspace, Replacement::Row) }
+            status(unsafe {
+                replace_impl(factor, row, values, values_len, workspace, Replacement::Row)
+            })
         }
 
         #[unsafe(no_mangle)]
@@ -755,7 +644,7 @@ macro_rules! export_float_abi {
             values_len: usize,
             workspace: *const $workspace,
         ) -> Status {
-            unsafe {
+            status(unsafe {
                 replace_impl(
                     factor,
                     column,
@@ -764,7 +653,7 @@ macro_rules! export_float_abi {
                     workspace,
                     Replacement::Column,
                 )
-            }
+            })
         }
 
         #[unsafe(no_mangle)]
@@ -775,7 +664,7 @@ macro_rules! export_float_abi {
             workspace: *const $workspace,
             output: *mut FfiRemoval,
         ) -> Status {
-            unsafe { remove_impl(factor, row, column, workspace, output) }
+            status(unsafe { remove_impl(factor, row, column, workspace, output) })
         }
 
         #[unsafe(no_mangle)]
@@ -785,7 +674,7 @@ macro_rules! export_float_abi {
             rhs_len: usize,
             error_index: *mut usize,
         ) -> Status {
-            unsafe { solve_impl(factor, rhs, rhs_len, error_index, false) }
+            status(unsafe { solve_impl(factor, rhs, rhs_len, error_index, false) })
         }
 
         #[unsafe(no_mangle)]
@@ -795,7 +684,7 @@ macro_rules! export_float_abi {
             rhs_len: usize,
             error_index: *mut usize,
         ) -> Status {
-            unsafe { solve_impl(factor, rhs, rhs_len, error_index, true) }
+            status(unsafe { solve_impl(factor, rhs, rhs_len, error_index, true) })
         }
     };
 }
