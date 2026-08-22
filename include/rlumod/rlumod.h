@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 /*
- * rlumod zero-based checked C ABI, version 1.
+ * rlumod zero-based checked C ABI.
  *
  * This interface reports detectable argument errors, but remains an unsafe
  * raw-pointer ABI. The caller must provide live, initialized allocations of

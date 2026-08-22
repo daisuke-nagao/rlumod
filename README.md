@@ -59,8 +59,8 @@ rlumod = { version = "0.2.0", features = ["c-ffi-zero-based"] }
 ```
 
 The descriptor layout, function signatures, and documented status numbers in
-this header form the version 1 target-specific ABI. `size_t` fields follow the
-pointer width of the target C ABI.
+this header form the target-specific ABI. `size_t` fields follow the pointer
+width of the target C ABI.
 
 ### Original one-based compatibility ABI
 
