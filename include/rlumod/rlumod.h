@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Daisuke Nagao
 // SPDX-License-Identifier: MIT
 
-#ifndef RLUMOD_RLUMOD_H
-#define RLUMOD_RLUMOD_H
+#ifndef UUID_D1748435_8FFF_4A42_8B1B_3508D14C8466
+#define UUID_D1748435_8FFF_4A42_8B1B_3508D14C8466
 
 #include <stddef.h>
 #include <stdint.h>
@@ -147,4 +147,4 @@ rlumod_status rlumod_f64_solve_transpose_in_place(
 }
 #endif
 
-#endif /* RLUMOD_RLUMOD_H */
+#endif /* UUID_D1748435_8FFF_4A42_8B1B_3508D14C8466 */
