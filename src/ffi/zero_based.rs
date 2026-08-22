@@ -402,12 +402,18 @@ fn removal_info(removal: Removal) -> RemovalInfo {
     }
 }
 
+#[derive(Clone, Copy)]
+enum SolveKind {
+    Normal,
+    Transpose,
+}
+
 unsafe fn solve_impl<T: Real>(
     factor_pointer: *const FactorDescriptor<T>,
     rhs: *mut T,
     rhs_len: usize,
     error_index: *mut usize,
-    transpose: bool,
+    kind: SolveKind,
 ) -> StatusResult {
     // SAFETY: Descriptor is read only after null/alignment validation.
     let (factor_descriptor, factor_descriptor_region) = unsafe { read_descriptor(factor_pointer) }?;
@@ -426,10 +432,9 @@ unsafe fn solve_impl<T: Real>(
         let factor = unsafe { borrow_factor(factor_descriptor) }?;
         // SAFETY: The mutable RHS region was validated above.
         let rhs = unsafe { mutable_slice(rhs, rhs_len) };
-        if transpose {
-            factor.solve_transpose_in_place(rhs)
-        } else {
-            factor.solve_in_place(rhs)
+        match kind {
+            SolveKind::Normal => factor.solve_in_place(rhs),
+            SolveKind::Transpose => factor.solve_transpose_in_place(rhs),
         }
     };
     match result {
@@ -587,7 +592,7 @@ macro_rules! export_float_abi {
             rhs_len: usize,
             error_index: *mut usize,
         ) -> Status {
-            status(unsafe { solve_impl(factor, rhs, rhs_len, error_index, false) })
+            status(unsafe { solve_impl(factor, rhs, rhs_len, error_index, SolveKind::Normal) })
         }
 
         #[unsafe(no_mangle)]
@@ -597,7 +602,7 @@ macro_rules! export_float_abi {
             rhs_len: usize,
             error_index: *mut usize,
         ) -> Status {
-            status(unsafe { solve_impl(factor, rhs, rhs_len, error_index, true) })
+            status(unsafe { solve_impl(factor, rhs, rhs_len, error_index, SolveKind::Transpose) })
         }
     };
 }
