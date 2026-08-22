@@ -123,6 +123,8 @@ jobs:
           compile_and_run zero smoke_zero_based.c smoke-zero
           compile_and_run both smoke_one_based.c smoke-one
           compile_and_run both smoke_zero_based.c smoke-zero
+          compile_and_run zero abi_zero_based.c abi-zero
+          compile_and_run both abi_zero_based.c abi-zero
       - name: Compile and run MSVC C and C++ FFI smoke tests
         if: matrix.ffi == true && runner.os == 'Windows'
         shell: cmd
@@ -144,38 +146,74 @@ jobs:
           tests\staticlib\target\both\smoke-zero-c.exe
           cl /nologo /W4 /WX /TP /std:c++17 /Iinclude /Fotests\staticlib\target\both\smoke-zero-cpp.obj tests\staticlib\smoke_zero_based.c /Fe:tests\staticlib\target\both\smoke-zero-cpp.exe /link tests\staticlib\target\both\release\rlumod_staticlib_consumer.lib
           tests\staticlib\target\both\smoke-zero-cpp.exe
-      - name: Verify C FFI feature gate and unmangled symbols
+          cl /nologo /W4 /WX /std:c11 /Iinclude /Fotests\staticlib\target\zero\abi-zero-c.obj tests\staticlib\abi_zero_based.c /Fe:tests\staticlib\target\zero\abi-zero-c.exe /link tests\staticlib\target\zero\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\zero\abi-zero-c.exe
+          cl /nologo /W4 /WX /TP /std:c++17 /Iinclude /Fotests\staticlib\target\zero\abi-zero-cpp.obj tests\staticlib\abi_zero_based.c /Fe:tests\staticlib\target\zero\abi-zero-cpp.exe /link tests\staticlib\target\zero\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\zero\abi-zero-cpp.exe
+          cl /nologo /W4 /WX /std:c11 /Iinclude /Fotests\staticlib\target\both\abi-zero-c.obj tests\staticlib\abi_zero_based.c /Fe:tests\staticlib\target\both\abi-zero-c.exe /link tests\staticlib\target\both\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\both\abi-zero-c.exe
+          cl /nologo /W4 /WX /TP /std:c++17 /Iinclude /Fotests\staticlib\target\both\abi-zero-cpp.obj tests\staticlib\abi_zero_based.c /Fe:tests\staticlib\target\both\abi-zero-cpp.exe /link tests\staticlib\target\both\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\both\abi-zero-cpp.exe
+      - name: Verify exact C FFI export symbol sets
         if: matrix.runner == 'ubuntu-24.04'
         shell: bash
         run: |
+          c_ffi_symbols() {
+            grep -E '^(LUmod|Lprod|LUforw|LUback|Usolve|elm|elmgen|rlumod_[[:alnum:]_]+)$' "$1" |
+              sort -u
+          }
+          expected_one_symbols() {
+            printf '%s\n' LUmod Lprod Usolve | sort
+          }
+          expected_zero_symbols() {
+            printf '%s\n' \
+              rlumod_storage_lengths \
+              rlumod_f32_factor_init \
+              rlumod_f32_workspace_init \
+              rlumod_f32_push \
+              rlumod_f32_replace_row \
+              rlumod_f32_replace_column \
+              rlumod_f32_remove \
+              rlumod_f32_solve_in_place \
+              rlumod_f32_solve_transpose_in_place \
+              rlumod_f64_factor_init \
+              rlumod_f64_workspace_init \
+              rlumod_f64_push \
+              rlumod_f64_replace_row \
+              rlumod_f64_replace_column \
+              rlumod_f64_remove \
+              rlumod_f64_solve_in_place \
+              rlumod_f64_solve_transpose_in_place | sort
+          }
+          expected_both_symbols() {
+            {
+              expected_one_symbols
+              expected_zero_symbols
+            } | sort -u
+          }
+
           CARGO_TARGET_DIR=target/feature-gate cargo +stable rustc --release \
             --no-default-features --features lumod-c --lib -- --emit=obj
-          if nm -g --defined-only target/feature-gate/release/deps/rlumod-*.o | \
-            awk '{print $3}' | \
-            grep -Ex 'LUmod|Lprod|LUforw|LUback|Usolve|elm|elmgen'; then
-            exit 1
-          fi
+          nm -g --defined-only target/feature-gate/release/deps/rlumod-*.o |
+            awk '{print $3}' > target/feature-gate/symbols.txt
+          test -z "$(c_ffi_symbols target/feature-gate/symbols.txt)"
+
           CARGO_TARGET_DIR=target/feature-gate-one cargo +stable rustc --release \
             --no-default-features --features c-ffi-one-based --lib -- --emit=obj
           nm -g --defined-only target/feature-gate-one/release/deps/rlumod-*.o | \
             awk '{print $3}' > target/feature-gate-one/symbols.txt
-          for symbol in LUmod Lprod Usolve; do
-            grep -Fx "${symbol}" target/feature-gate-one/symbols.txt
-          done
-          ! grep -E '^rlumod_' target/feature-gate-one/symbols.txt
+
           CARGO_TARGET_DIR=target/feature-gate-zero cargo +stable rustc --release \
             --no-default-features --features c-ffi-zero-based --lib -- --emit=obj
           nm -g --defined-only target/feature-gate-zero/release/deps/rlumod-*.o | \
             awk '{print $3}' > target/feature-gate-zero/symbols.txt
-          for operation in factor_init workspace_init push replace_row \
-            replace_column remove solve_in_place solve_transpose_in_place; do
-            grep -Fx "rlumod_f32_${operation}" target/feature-gate-zero/symbols.txt
-            grep -Fx "rlumod_f64_${operation}" target/feature-gate-zero/symbols.txt
-          done
-          grep -Fx rlumod_storage_lengths target/feature-gate-zero/symbols.txt
-          ! grep -Fx rlumod_f32_factor_from_storage target/feature-gate-zero/symbols.txt
-          ! grep -Fx rlumod_f64_factor_from_storage target/feature-gate-zero/symbols.txt
-          ! grep -Ex 'LUmod|Lprod|Usolve' target/feature-gate-zero/symbols.txt
+
+          CARGO_TARGET_DIR=target/feature-gate-both cargo +stable rustc --release \
+            --no-default-features \
+            --features c-ffi-one-based,c-ffi-zero-based --lib -- --emit=obj
+          nm -g --defined-only target/feature-gate-both/release/deps/rlumod-*.o | \
+            awk '{print $3}' > target/feature-gate-both/symbols.txt
+
           archive_one="tests/staticlib/target/one/release/librlumod_staticlib_consumer.a"
           archive_zero="tests/staticlib/target/zero/release/librlumod_staticlib_consumer.a"
           archive_both="tests/staticlib/target/both/release/librlumod_staticlib_consumer.a"
@@ -185,29 +223,20 @@ jobs:
             > tests/staticlib/target/zero/symbols.txt
           nm -g --defined-only "${archive_both}" | awk '{print $3}' \
             > tests/staticlib/target/both/symbols.txt
-          for symbol in LUmod Lprod Usolve; do
-            grep -Fx "${symbol}" tests/staticlib/target/one/symbols.txt
-            grep -Fx "${symbol}" tests/staticlib/target/both/symbols.txt
-          done
-          ! grep -E '^rlumod_' tests/staticlib/target/one/symbols.txt
-          for operation in factor_init workspace_init push replace_row \
-            replace_column remove solve_in_place solve_transpose_in_place; do
-            grep -Fx "rlumod_f32_${operation}" tests/staticlib/target/zero/symbols.txt
-            grep -Fx "rlumod_f64_${operation}" tests/staticlib/target/zero/symbols.txt
-            grep -Fx "rlumod_f32_${operation}" tests/staticlib/target/both/symbols.txt
-            grep -Fx "rlumod_f64_${operation}" tests/staticlib/target/both/symbols.txt
-          done
-          grep -Fx rlumod_storage_lengths tests/staticlib/target/zero/symbols.txt
-          grep -Fx rlumod_storage_lengths tests/staticlib/target/both/symbols.txt
-          ! grep -Ex 'LUmod|Lprod|Usolve' tests/staticlib/target/zero/symbols.txt
-          ! grep -Fx rlumod_f32_factor_from_storage tests/staticlib/target/zero/symbols.txt
-          ! grep -Fx rlumod_f64_factor_from_storage tests/staticlib/target/zero/symbols.txt
-          ! grep -Fx rlumod_f32_factor_from_storage tests/staticlib/target/both/symbols.txt
-          ! grep -Fx rlumod_f64_factor_from_storage tests/staticlib/target/both/symbols.txt
-          for symbol in LUforw LUback elm elmgen; do
-            ! grep -Fx "${symbol}" tests/staticlib/target/one/symbols.txt
-            ! grep -Fx "${symbol}" tests/staticlib/target/both/symbols.txt
-          done
+
+          diff -u <(expected_one_symbols) \
+            <(c_ffi_symbols target/feature-gate-one/symbols.txt)
+          diff -u <(expected_zero_symbols) \
+            <(c_ffi_symbols target/feature-gate-zero/symbols.txt)
+          diff -u <(expected_both_symbols) \
+            <(c_ffi_symbols target/feature-gate-both/symbols.txt)
+          diff -u <(expected_one_symbols) \
+            <(c_ffi_symbols tests/staticlib/target/one/symbols.txt)
+          diff -u <(expected_zero_symbols) \
+            <(c_ffi_symbols tests/staticlib/target/zero/symbols.txt)
+          diff -u <(expected_both_symbols) \
+            <(c_ffi_symbols tests/staticlib/target/both/symbols.txt)
+
           ! grep -Eq '(^|[^[:alnum:]_])(LUforw|LUback|elm|elmgen)([^[:alnum:]_]|$)' \
             include/lumod-c/lumod_dense.h
 

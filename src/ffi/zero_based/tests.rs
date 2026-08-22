@@ -255,20 +255,19 @@ fn maps_errors_without_mutating_outputs() {
 
 #[test]
 fn rejects_invalid_pointer_regions_before_touching_memory() {
-    let mut bytes = [0_u8; 128];
-    let misaligned = unsafe { bytes.as_mut_ptr().add(1).cast::<f64>() };
+    let mut aligned_storage = [0.0_f64; 3];
+    let mut u_storage = [0.0_f64; 1];
+    let misaligned = unsafe {
+        aligned_storage
+            .as_mut_ptr()
+            .cast::<u8>()
+            .add(1)
+            .cast::<f64>()
+    };
     let mut factor = FactorDescriptor::<f64>::default();
     unsafe {
         assert_eq!(
-            rlumod_f64_factor_init(
-                &mut factor,
-                0,
-                1,
-                misaligned,
-                2,
-                bytes.as_mut_ptr().add(64).cast(),
-                1,
-            ),
+            rlumod_f64_factor_init(&mut factor, 0, 1, misaligned, 2, u_storage.as_mut_ptr(), 1,),
             RLUMOD_STATUS_MISALIGNED_POINTER
         );
         assert_eq!(
@@ -278,13 +277,11 @@ fn rejects_invalid_pointer_regions_before_touching_memory() {
                 1,
                 ptr::null_mut(),
                 2,
-                bytes.as_mut_ptr().add(64).cast(),
+                u_storage.as_mut_ptr(),
                 1,
             ),
             RLUMOD_STATUS_NULL_POINTER
         );
-
-        let mut aligned_storage = [0.0_f64; 3];
         let aligned = aligned_storage.as_mut_ptr();
         assert_eq!(
             rlumod_f64_factor_init(&mut factor, 0, 1, aligned, 2, aligned.add(1), 1,),

@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Daisuke Nagao
 // SPDX-License-Identifier: MIT
 
-#include <lumod-c/lumod_dense.h>
 #include <rlumod/rlumod.h>
+#include <lumod-c/lumod_dense.h>
 
 #include <math.h>
 
