@@ -72,7 +72,7 @@ unsafe fn one_based_slice<'a>(pointer: *mut c_double, length: usize) -> Option<&
 /// All pointers must satisfy the storage, alignment, and non-aliasing contract
 /// declared in `lumod_dense.h`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn LUmod(
+unsafe extern "C" fn LUmod(
     mode: c_int,
     maxmod: c_int,
     n: c_int,
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn LUmod(
 /// All pointers must satisfy the storage, alignment, and non-aliasing contract
 /// declared in `lumod_dense.h`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn Lprod(
+unsafe extern "C" fn Lprod(
     mode: c_int,
     maxmod: c_int,
     n: c_int,
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn Lprod(
 /// Both pointers must satisfy the storage, alignment, and non-aliasing contract
 /// declared in `lumod_dense.h`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn Usolve(
+unsafe extern "C" fn Usolve(
     mode: c_int,
     maxmod: c_int,
     n: c_int,

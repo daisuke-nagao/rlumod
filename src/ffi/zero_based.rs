@@ -3,8 +3,6 @@
 
 //! Checked zero-based C ABI.
 
-#![allow(missing_docs)]
-
 use core::ptr;
 
 use crate::{
@@ -43,13 +41,13 @@ fn status(result: StatusResult) -> Status {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Factor<T> {
-    pub dimension: usize,
-    pub capacity: usize,
-    pub l: *mut T,
-    pub l_len: usize,
-    pub u: *mut T,
-    pub u_len: usize,
+struct Factor<T> {
+    dimension: usize,
+    capacity: usize,
+    l: *mut T,
+    l_len: usize,
+    u: *mut T,
+    u_len: usize,
 }
 
 impl<T> Default for Factor<T> {
@@ -67,13 +65,13 @@ impl<T> Default for Factor<T> {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Work<T> {
-    pub y: *mut T,
-    pub y_len: usize,
-    pub z: *mut T,
-    pub z_len: usize,
-    pub w: *mut T,
-    pub w_len: usize,
+struct Work<T> {
+    y: *mut T,
+    y_len: usize,
+    z: *mut T,
+    z_len: usize,
+    w: *mut T,
+    w_len: usize,
 }
 
 impl<T> Default for Work<T> {
@@ -89,18 +87,18 @@ impl<T> Default for Work<T> {
     }
 }
 
-pub type F32Factor = Factor<f32>;
-pub type F64Factor = Factor<f64>;
-pub type F32Workspace = Work<f32>;
-pub type F64Workspace = Work<f64>;
+type F32Factor = Factor<f32>;
+type F64Factor = Factor<f64>;
+type F32Workspace = Work<f32>;
+type F64Workspace = Work<f64>;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct FfiRemoval {
-    pub has_moved_row: u8,
-    pub moved_row: usize,
-    pub has_moved_column: u8,
-    pub moved_column: usize,
+struct FfiRemoval {
+    has_moved_row: u8,
+    moved_row: usize,
+    has_moved_column: u8,
+    moved_column: usize,
 }
 
 fn storage_status(error: StorageError) -> Status {
@@ -467,7 +465,7 @@ unsafe fn storage_lengths_impl(capacity: usize, l: *mut usize, u: *mut usize) ->
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn rlumod_storage_lengths(
+unsafe extern "C" fn rlumod_storage_lengths(
     capacity: usize,
     l: *mut usize,
     u: *mut usize,
@@ -491,7 +489,7 @@ macro_rules! export_float_abi {
         $solve_transpose:ident
     ) => {
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $from_storage(
+        unsafe extern "C" fn $from_storage(
             output: *mut $factor,
             dimension: usize,
             capacity: usize,
@@ -506,7 +504,7 @@ macro_rules! export_float_abi {
         }
 
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $workspace_init(
+        unsafe extern "C" fn $workspace_init(
             output: *mut $workspace,
             y: *mut $ty,
             y_len: usize,
@@ -519,7 +517,7 @@ macro_rules! export_float_abi {
         }
 
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $push(
+        unsafe extern "C" fn $push(
             factor: *mut $factor,
             row: *const $ty,
             row_len: usize,
@@ -536,7 +534,7 @@ macro_rules! export_float_abi {
         }
 
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $replace_row(
+        unsafe extern "C" fn $replace_row(
             factor: *mut $factor,
             row: usize,
             values: *const $ty,
@@ -549,7 +547,7 @@ macro_rules! export_float_abi {
         }
 
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $replace_column(
+        unsafe extern "C" fn $replace_column(
             factor: *mut $factor,
             column: usize,
             values: *const $ty,
@@ -569,7 +567,7 @@ macro_rules! export_float_abi {
         }
 
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $remove(
+        unsafe extern "C" fn $remove(
             factor: *mut $factor,
             row: usize,
             column: usize,
@@ -580,7 +578,7 @@ macro_rules! export_float_abi {
         }
 
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $solve(
+        unsafe extern "C" fn $solve(
             factor: *const $factor,
             rhs: *mut $ty,
             rhs_len: usize,
@@ -590,7 +588,7 @@ macro_rules! export_float_abi {
         }
 
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $solve_transpose(
+        unsafe extern "C" fn $solve_transpose(
             factor: *const $factor,
             rhs: *mut $ty,
             rhs_len: usize,
