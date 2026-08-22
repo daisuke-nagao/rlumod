@@ -12,6 +12,49 @@ use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 wasm_bindgen_test_configure!(run_in_browser);
 
+const STATIC_LENGTHS: StorageLengths = match storage_lengths(3) {
+    Ok(lengths) => lengths,
+    Err(_) => panic!("unexpected storage overflow"),
+};
+const STATIC_L: [f64; STATIC_LENGTHS.l] = [0.0; STATIC_LENGTHS.l];
+const STATIC_U: [f64; STATIC_LENGTHS.u] = [0.0; STATIC_LENGTHS.u];
+const STATIC_Y: [f64; 3] = [0.0; 3];
+const STATIC_Z: [f64; 3] = [0.0; 3];
+const STATIC_W: [f64; 3] = [0.0; 3];
+
+#[test]
+fn supports_const_storage_lengths() {
+    assert_eq!(STATIC_LENGTHS, StorageLengths { l: 12, u: 6 });
+    assert_eq!(STATIC_L, [0.0; 12]);
+    assert_eq!(STATIC_U, [0.0; 6]);
+    assert_eq!(STATIC_Y, [0.0; 3]);
+    assert_eq!(STATIC_Z, [0.0; 3]);
+    assert_eq!(STATIC_W, [0.0; 3]);
+}
+
+const MACRO_CAPACITY: usize = 3;
+
+#[test]
+fn stack_storage_macro_initializes_fixed_storage() {
+    let macro_storage_f64 = rlumod::stack_storage!(f64; MACRO_CAPACITY);
+    let macro_storage_f32_zero = rlumod::stack_storage!(f32; 0);
+
+    assert_eq!(macro_storage_f64.0, [0.0; 12]);
+    assert_eq!(macro_storage_f64.1, [0.0; 6]);
+    assert_eq!(macro_storage_f64.2, [0.0; 3]);
+    assert_eq!(macro_storage_f64.3, [0.0; 3]);
+    assert_eq!(macro_storage_f64.4, [0.0; 3]);
+    assert_eq!(macro_storage_f32_zero.0, []);
+    assert_eq!(macro_storage_f32_zero.1, []);
+    assert_eq!(macro_storage_f32_zero.2, []);
+    assert_eq!(macro_storage_f32_zero.3, []);
+    assert_eq!(macro_storage_f32_zero.4, []);
+
+    let repeated = rlumod::stack_storage!(f64; 3);
+    assert_eq!(repeated.0, [0.0; 12]);
+    assert_eq!(repeated.1, [0.0; 6]);
+}
+
 #[test]
 fn calculates_storage_lengths_without_overflow() {
     for (capacity, l, u) in [(0, 0, 0), (1, 2, 1), (2, 6, 3), (3, 12, 6)] {

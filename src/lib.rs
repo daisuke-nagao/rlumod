@@ -73,7 +73,9 @@ let _ = rlumod::ffi::zero_based::rlumod_storage_lengths;
 //!
 //! The example uses `Vec` only to choose the capacity at run time. [`LuMod`]
 //! does not allocate, and fixed arrays or static buffers may be used instead;
-//! see `examples/static_storage.rs` in the source distribution.
+//! see `examples/static_storage.rs` in the source distribution. For a
+//! compile-time capacity, `stack_storage!` creates the zero-initialized factor
+//! and workspace arrays from the same checked storage-length calculation.
 //!
 //! # Building a matrix
 //!
@@ -116,7 +118,10 @@ let _ = rlumod::ffi::zero_based::rlumod_storage_lengths;
 //!
 //! The crate is `no_std` and performs no heap allocation. Storage may still be
 //! supplied by `Vec` in applications that have an allocator, or by fixed and
-//! static arrays in allocation-free applications.
+//! static arrays in allocation-free applications. `stack_storage!` creates fixed
+//! local array values without a heap allocation, but does not guarantee physical
+//! stack placement; a valid large capacity can still overflow the stack when
+//! those values are used as locals.
 //!
 //! # Updates and removal
 //!
@@ -200,6 +205,56 @@ wasm_bindgen_test_configure!(run_in_browser);
 mod algorithm;
 mod api;
 pub use api::*;
+
+/// Creates zero-initialized fixed-size storage for a [`LuMod`] instance.
+///
+/// The returned arrays are ordered as `(L, U, Y, Z, W)`: the factor buffers
+/// followed by the three update-workspace buffers. `capacity` must be a
+/// literal or an ordinary constant expression, and the scalar type must be
+/// `f32` or `f64`.
+///
+/// This macro creates fixed-size arrays without heap allocation. It does not
+/// guarantee that the arrays have a physical stack allocation, and a valid
+/// large capacity can still overflow the stack when the arrays are used as
+/// local values.
+///
+/// # Examples
+///
+/// ```
+/// const CAPACITY: usize = 2;
+/// let (l, u, y, z, w) = rlumod::stack_storage!(f64; CAPACITY);
+/// assert_eq!(l.len(), 6);
+/// assert_eq!(u.len(), 3);
+/// assert_eq!(y.len(), CAPACITY);
+/// assert_eq!(z.len(), CAPACITY);
+/// assert_eq!(w.len(), CAPACITY);
+/// ```
+///
+/// A capacity whose storage lengths overflow `usize` is rejected during
+/// compilation with a fixed panic message:
+///
+/// ```compile_fail,E0080
+/// const _: ([f64; 0], [f64; 0], [f64; 0], [f64; 0], [f64; 0]) =
+///     rlumod::stack_storage!(f64; usize::MAX);
+/// ```
+#[macro_export]
+macro_rules! stack_storage {
+    ($scalar:ty; $capacity:expr) => {{
+        const __RLUMOD_STACK_STORAGE_CAPACITY: usize = $capacity;
+        const __RLUMOD_STACK_STORAGE_LENGTHS: $crate::StorageLengths =
+            match $crate::storage_lengths(__RLUMOD_STACK_STORAGE_CAPACITY) {
+                Ok(lengths) => lengths,
+                Err(_) => panic!("rlumod::stack_storage! capacity overflow"),
+            };
+        (
+            [<$scalar as $crate::Real>::ZERO; __RLUMOD_STACK_STORAGE_LENGTHS.l],
+            [<$scalar as $crate::Real>::ZERO; __RLUMOD_STACK_STORAGE_LENGTHS.u],
+            [<$scalar as $crate::Real>::ZERO; __RLUMOD_STACK_STORAGE_CAPACITY],
+            [<$scalar as $crate::Real>::ZERO; __RLUMOD_STACK_STORAGE_CAPACITY],
+            [<$scalar as $crate::Real>::ZERO; __RLUMOD_STACK_STORAGE_CAPACITY],
+        )
+    }};
+}
 
 #[cfg(any(feature = "c-ffi-one-based", feature = "c-ffi-zero-based"))]
 mod ffi;

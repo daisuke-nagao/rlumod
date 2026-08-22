@@ -4,17 +4,12 @@
 use rlumod::{LuMod, Workspace};
 
 const CAPACITY: usize = 2;
-const L_LEN: usize = CAPACITY * (CAPACITY + 1);
-const U_LEN: usize = CAPACITY * (CAPACITY + 1) / 2;
 
 fn main() {
-    // This portable example binary uses the standard runtime, but all storage
-    // passed to the no_std rlumod library is fixed and stack allocated.
-    let mut l = [0.0_f64; L_LEN];
-    let mut u = [0.0_f64; U_LEN];
-    let mut y = [0.0_f64; CAPACITY];
-    let mut z = [0.0_f64; CAPACITY];
-    let mut w = [0.0_f64; CAPACITY];
+    // This portable example binary uses the standard runtime, but the macro
+    // creates fixed-size storage without heap allocation. It does not promise
+    // a physical stack allocation for these local values.
+    let (mut l, mut u, mut y, mut z, mut w) = rlumod::stack_storage!(f64; CAPACITY);
 
     let mut workspace = Workspace::new(&mut y, &mut z, &mut w).unwrap();
     let mut factors = LuMod::from_storage(0, CAPACITY, &mut l, &mut u).unwrap();

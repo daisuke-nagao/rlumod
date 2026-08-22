@@ -10,9 +10,11 @@ removing a row and column.
 cargo run --example basic_lifecycle
 ```
 
-`static_storage.rs` performs a build and solve with fixed arrays. The example
-binary has the normal Rust standard runtime, while all storage supplied to the
-`no_std` library is fixed and allocation-free.
+`static_storage.rs` performs a build and solve with fixed arrays created by
+`rlumod::stack_storage!`. The example binary has the normal Rust standard
+runtime, while all storage supplied to the `no_std` library is fixed and
+allocation-free. The macro does not guarantee physical stack placement, and a
+valid large capacity can still overflow the stack when used as a local value.
 
 ```console
 cargo run --example static_storage
