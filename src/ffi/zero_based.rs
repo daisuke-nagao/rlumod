@@ -209,10 +209,10 @@ fn update_status(error: UpdateError) -> Status {
 fn factor_regions<T: Real>(
     descriptor: Factor<T>,
 ) -> StatusResult<(Option<Region>, Option<Region>)> {
-    let lengths = storage_lengths(descriptor.capacity).map_err(storage_status)?;
     if descriptor.dimension > descriptor.capacity {
         return Err(RLUMOD_STATUS_INVALID_DIMENSION);
     }
+    let lengths = storage_lengths(descriptor.capacity).map_err(storage_status)?;
     if descriptor.l_len < lengths.l || descriptor.u_len < lengths.u {
         return Err(RLUMOD_STATUS_INSUFFICIENT_STORAGE);
     }

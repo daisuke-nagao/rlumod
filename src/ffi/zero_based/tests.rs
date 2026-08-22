@@ -6,14 +6,14 @@ use core::ptr;
 use super::{
     F32Factor, F32Workspace, F64Factor, F64Workspace, FfiRemoval, RLUMOD_STATUS_CAPACITY_EXCEEDED,
     RLUMOD_STATUS_COLUMN_OUT_OF_BOUNDS, RLUMOD_STATUS_INSUFFICIENT_STORAGE,
-    RLUMOD_STATUS_LENGTH_MISMATCH, RLUMOD_STATUS_MISALIGNED_POINTER,
-    RLUMOD_STATUS_NON_FINITE_DIAGONAL, RLUMOD_STATUS_NULL_POINTER, RLUMOD_STATUS_OK,
-    RLUMOD_STATUS_OVERLAPPING_BUFFERS, RLUMOD_STATUS_ROW_OUT_OF_BOUNDS, RLUMOD_STATUS_SINGULAR,
-    RLUMOD_STATUS_SIZE_OVERFLOW, rlumod_f32_factor_from_storage, rlumod_f32_push,
-    rlumod_f32_solve_in_place, rlumod_f32_workspace_init, rlumod_f64_factor_from_storage,
-    rlumod_f64_push, rlumod_f64_remove, rlumod_f64_replace_column, rlumod_f64_replace_row,
-    rlumod_f64_solve_in_place, rlumod_f64_solve_transpose_in_place, rlumod_f64_workspace_init,
-    rlumod_storage_lengths,
+    RLUMOD_STATUS_INVALID_DIMENSION, RLUMOD_STATUS_LENGTH_MISMATCH,
+    RLUMOD_STATUS_MISALIGNED_POINTER, RLUMOD_STATUS_NON_FINITE_DIAGONAL,
+    RLUMOD_STATUS_NULL_POINTER, RLUMOD_STATUS_OK, RLUMOD_STATUS_OVERLAPPING_BUFFERS,
+    RLUMOD_STATUS_ROW_OUT_OF_BOUNDS, RLUMOD_STATUS_SINGULAR, RLUMOD_STATUS_SIZE_OVERFLOW,
+    rlumod_f32_factor_from_storage, rlumod_f32_push, rlumod_f32_solve_in_place,
+    rlumod_f32_workspace_init, rlumod_f64_factor_from_storage, rlumod_f64_push, rlumod_f64_remove,
+    rlumod_f64_replace_column, rlumod_f64_replace_row, rlumod_f64_solve_in_place,
+    rlumod_f64_solve_transpose_in_place, rlumod_f64_workspace_init, rlumod_storage_lengths,
 };
 
 #[test]
@@ -381,6 +381,27 @@ fn rejects_overflow_and_every_mutable_alias_class() {
         );
     }
     assert_eq!(rhs_canary, [41.0]);
+}
+
+#[test]
+fn rejects_invalid_dimension_before_storage_overflow() {
+    let mut factor = F64Factor::default();
+    let before = factor;
+    unsafe {
+        assert_eq!(
+            rlumod_f64_factor_from_storage(
+                &mut factor,
+                usize::MAX,
+                usize::MAX - 1,
+                ptr::null_mut(),
+                0,
+                ptr::null_mut(),
+                0,
+            ),
+            RLUMOD_STATUS_INVALID_DIMENSION
+        );
+    }
+    assert_eq!(factor, before);
 }
 
 #[test]
