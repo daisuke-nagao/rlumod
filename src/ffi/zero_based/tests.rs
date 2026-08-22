@@ -9,11 +9,11 @@ use super::{
     RLUMOD_STATUS_LENGTH_MISMATCH, RLUMOD_STATUS_MISALIGNED_POINTER,
     RLUMOD_STATUS_NON_FINITE_DIAGONAL, RLUMOD_STATUS_NULL_POINTER, RLUMOD_STATUS_OK,
     RLUMOD_STATUS_OVERLAPPING_BUFFERS, RLUMOD_STATUS_ROW_OUT_OF_BOUNDS, RLUMOD_STATUS_SINGULAR,
-    RLUMOD_STATUS_SIZE_OVERFLOW, RemovalInfo, WorkspaceDescriptor, rlumod_f32_factor_from_storage,
-    rlumod_f32_push, rlumod_f32_solve_in_place, rlumod_f32_workspace_init,
-    rlumod_f64_factor_from_storage, rlumod_f64_push, rlumod_f64_remove, rlumod_f64_replace_column,
-    rlumod_f64_replace_row, rlumod_f64_solve_in_place, rlumod_f64_solve_transpose_in_place,
-    rlumod_f64_workspace_init, rlumod_storage_lengths,
+    RLUMOD_STATUS_SIZE_OVERFLOW, RemovalInfo, WorkspaceDescriptor, rlumod_f32_factor_init,
+    rlumod_f32_push, rlumod_f32_solve_in_place, rlumod_f32_workspace_init, rlumod_f64_factor_init,
+    rlumod_f64_push, rlumod_f64_remove, rlumod_f64_replace_column, rlumod_f64_replace_row,
+    rlumod_f64_solve_in_place, rlumod_f64_solve_transpose_in_place, rlumod_f64_workspace_init,
+    rlumod_storage_lengths,
 };
 
 #[test]
@@ -54,7 +54,7 @@ fn exports_the_complete_zero_based_f64_lifecycle() {
 
     unsafe {
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 &mut factor,
                 0,
                 3,
@@ -147,15 +147,7 @@ fn exports_f32_and_accepts_null_for_empty_buffers() {
     let mut workspace = WorkspaceDescriptor::<f32>::default();
     unsafe {
         assert_eq!(
-            rlumod_f32_factor_from_storage(
-                &mut factor,
-                0,
-                0,
-                ptr::null_mut(),
-                0,
-                ptr::null_mut(),
-                0,
-            ),
+            rlumod_f32_factor_init(&mut factor, 0, 0, ptr::null_mut(), 0, ptr::null_mut(), 0,),
             RLUMOD_STATUS_OK
         );
         assert_eq!(
@@ -188,7 +180,7 @@ fn maps_errors_without_mutating_outputs() {
     let before = factor;
     unsafe {
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 &mut factor,
                 0,
                 1,
@@ -206,7 +198,7 @@ fn maps_errors_without_mutating_outputs() {
     let mut workspace = WorkspaceDescriptor::<f64>::default();
     unsafe {
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 &mut factor,
                 0,
                 1,
@@ -268,7 +260,7 @@ fn rejects_invalid_pointer_regions_before_touching_memory() {
     let mut factor = FactorDescriptor::<f64>::default();
     unsafe {
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 &mut factor,
                 0,
                 1,
@@ -280,7 +272,7 @@ fn rejects_invalid_pointer_regions_before_touching_memory() {
             RLUMOD_STATUS_MISALIGNED_POINTER
         );
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 &mut factor,
                 0,
                 1,
@@ -295,7 +287,7 @@ fn rejects_invalid_pointer_regions_before_touching_memory() {
         let mut aligned_storage = [0.0_f64; 3];
         let aligned = aligned_storage.as_mut_ptr();
         assert_eq!(
-            rlumod_f64_factor_from_storage(&mut factor, 0, 1, aligned, 2, aligned.add(1), 1,),
+            rlumod_f64_factor_init(&mut factor, 0, 1, aligned, 2, aligned.add(1), 1,),
             RLUMOD_STATUS_OVERLAPPING_BUFFERS
         );
     }
@@ -308,19 +300,11 @@ fn rejects_overflow_and_every_mutable_alias_class() {
     let impossible = (usize::MAX & !(core::mem::align_of::<f64>() - 1)) as *mut f64;
     unsafe {
         assert_eq!(
-            rlumod_f64_factor_from_storage(
-                &mut factor,
-                0,
-                1,
-                impossible,
-                2,
-                u.as_mut_ptr(),
-                u.len(),
-            ),
+            rlumod_f64_factor_init(&mut factor, 0, 1, impossible, 2, u.as_mut_ptr(), u.len(),),
             RLUMOD_STATUS_SIZE_OVERFLOW
         );
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 l.as_mut_ptr().cast(),
                 0,
                 1,
@@ -332,7 +316,7 @@ fn rejects_overflow_and_every_mutable_alias_class() {
             RLUMOD_STATUS_OVERLAPPING_BUFFERS
         );
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 &mut factor,
                 0,
                 1,
@@ -389,7 +373,7 @@ fn rejects_invalid_dimension_before_storage_overflow() {
     let before = factor;
     unsafe {
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 &mut factor,
                 usize::MAX,
                 usize::MAX - 1,
@@ -412,7 +396,7 @@ fn update_errors_and_remove_to_zero_preserve_state() {
     let mut workspace = WorkspaceDescriptor::<f64>::default();
     unsafe {
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 &mut factor,
                 0,
                 1,
@@ -488,7 +472,7 @@ fn enforces_operation_specific_update_alias_rules() {
     let mut workspace = WorkspaceDescriptor::<f64>::default();
     unsafe {
         assert_eq!(
-            rlumod_f64_factor_from_storage(
+            rlumod_f64_factor_init(
                 &mut factor,
                 0,
                 2,

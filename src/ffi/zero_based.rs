@@ -167,7 +167,7 @@ unsafe fn borrow_workspace<'a, T: Copy>(
     Workspace::new(y, z, w).map_err(storage_status)
 }
 
-unsafe fn factor_from_storage_impl<T: Real>(
+unsafe fn factor_init_impl<T: Real>(
     output: *mut FactorDescriptor<T>,
     dimension: usize,
     capacity: usize,
@@ -506,9 +506,7 @@ macro_rules! export_float_abi {
             u: *mut $ty,
             u_len: usize,
         ) -> Status {
-            status(unsafe {
-                factor_from_storage_impl(output, dimension, capacity, l, l_len, u, u_len)
-            })
+            status(unsafe { factor_init_impl(output, dimension, capacity, l, l_len, u, u_len) })
         }
 
         #[unsafe(no_mangle)]
@@ -611,7 +609,7 @@ export_float_abi!(
     f32,
     FactorDescriptor<f32>,
     WorkspaceDescriptor<f32>,
-    rlumod_f32_factor_from_storage,
+    rlumod_f32_factor_init,
     rlumod_f32_workspace_init,
     rlumod_f32_push,
     rlumod_f32_replace_row,
@@ -625,7 +623,7 @@ export_float_abi!(
     f64,
     FactorDescriptor<f64>,
     WorkspaceDescriptor<f64>,
-    rlumod_f64_factor_from_storage,
+    rlumod_f64_factor_init,
     rlumod_f64_workspace_init,
     rlumod_f64_push,
     rlumod_f64_replace_row,

@@ -27,7 +27,7 @@ static int smoke_zero_based_f64(void) {
 
   if (rlumod_storage_lengths(2, &l_len, &u_len) != RLUMOD_STATUS_OK ||
       l_len != 6 || u_len != 3 ||
-      rlumod_f64_factor_from_storage(&factor, 0, 2, l, 6, u, 3) !=
+      rlumod_f64_factor_init(&factor, 0, 2, l, 6, u, 3) !=
           RLUMOD_STATUS_OK ||
       rlumod_f64_workspace_init(&workspace, y, 2, z, 2, w, 2) !=
           RLUMOD_STATUS_OK ||
@@ -87,7 +87,7 @@ static int smoke_zero_based_f32(void) {
   rlumod_f32_workspace workspace = {NULL, 0, NULL, 0, NULL, 0};
   rlumod_removal removal = {0, 0, 0, 0};
 
-  if (rlumod_f32_factor_from_storage(&factor, 0, 1, l, 2, u, 1) !=
+  if (rlumod_f32_factor_init(&factor, 0, 1, l, 2, u, 1) !=
           RLUMOD_STATUS_OK ||
       rlumod_f32_workspace_init(&workspace, y, 1, z, 1, w, 1) !=
           RLUMOD_STATUS_OK ||

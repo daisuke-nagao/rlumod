@@ -91,7 +91,7 @@ typedef struct rlumod_removal {
 rlumod_status rlumod_storage_lengths(size_t capacity, size_t *l_len,
                                      size_t *u_len);
 
-rlumod_status rlumod_f32_factor_from_storage(
+rlumod_status rlumod_f32_factor_init(
     rlumod_f32_factor *factor, size_t dimension, size_t capacity, float *l,
     size_t l_len, float *u, size_t u_len);
 rlumod_status rlumod_f32_workspace_init(
@@ -117,7 +117,7 @@ rlumod_status rlumod_f32_solve_transpose_in_place(
     const rlumod_f32_factor *factor, float *rhs, size_t rhs_len,
     size_t *error_index);
 
-rlumod_status rlumod_f64_factor_from_storage(
+rlumod_status rlumod_f64_factor_init(
     rlumod_f64_factor *factor, size_t dimension, size_t capacity, double *l,
     size_t l_len, double *u, size_t u_len);
 rlumod_status rlumod_f64_workspace_init(
