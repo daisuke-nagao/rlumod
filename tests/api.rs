@@ -44,11 +44,11 @@ fn stack_storage_macro_initializes_fixed_storage() {
     assert_eq!(macro_storage_f64.2, [0.0; 3]);
     assert_eq!(macro_storage_f64.3, [0.0; 3]);
     assert_eq!(macro_storage_f64.4, [0.0; 3]);
-    assert_eq!(macro_storage_f32_zero.0, []);
-    assert_eq!(macro_storage_f32_zero.1, []);
-    assert_eq!(macro_storage_f32_zero.2, []);
-    assert_eq!(macro_storage_f32_zero.3, []);
-    assert_eq!(macro_storage_f32_zero.4, []);
+    assert!(macro_storage_f32_zero.0.is_empty());
+    assert!(macro_storage_f32_zero.1.is_empty());
+    assert!(macro_storage_f32_zero.2.is_empty());
+    assert!(macro_storage_f32_zero.3.is_empty());
+    assert!(macro_storage_f32_zero.4.is_empty());
 
     let repeated = rlumod::stack_storage!(f64; 3);
     assert_eq!(repeated.0, [0.0; 12]);

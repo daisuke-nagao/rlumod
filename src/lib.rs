@@ -230,6 +230,17 @@ pub use api::*;
 /// assert_eq!(w.len(), CAPACITY);
 /// ```
 ///
+/// The expansion also works in a downstream crate without the implicit
+/// prelude:
+///
+/// ```
+/// #![no_implicit_prelude]
+/// extern crate rlumod;
+///
+/// const STORAGE: ([f64; 2], [f64; 1], [f64; 1], [f64; 1], [f64; 1]) =
+///     rlumod::stack_storage!(f64; 1);
+/// ```
+///
 /// A capacity whose storage lengths overflow `usize` is rejected during
 /// compilation with a fixed panic message:
 ///
@@ -243,8 +254,10 @@ macro_rules! stack_storage {
         const __RLUMOD_STACK_STORAGE_CAPACITY: usize = $capacity;
         const __RLUMOD_STACK_STORAGE_LENGTHS: $crate::StorageLengths =
             match $crate::storage_lengths(__RLUMOD_STACK_STORAGE_CAPACITY) {
-                Ok(lengths) => lengths,
-                Err(_) => panic!("rlumod::stack_storage! capacity overflow"),
+                ::core::result::Result::Ok(lengths) => lengths,
+                ::core::result::Result::Err(_) => {
+                    ::core::panic!("rlumod::stack_storage! capacity overflow")
+                }
             };
         (
             [<$scalar as $crate::Real>::ZERO; __RLUMOD_STACK_STORAGE_LENGTHS.l],
