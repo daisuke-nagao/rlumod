@@ -9,7 +9,7 @@
 The C ABI is exported for linking, not as a Rust raw-pointer API.
 
 ```compile_fail,E0603
-let _ = rlumod::ffi::LUmod;
+let _ = rlumod::ffi::one_based::LUmod;
 ```
 "#
 )]
@@ -19,7 +19,7 @@ let _ = rlumod::ffi::LUmod;
 The checked C ABI is exported for linking, not as a Rust raw-pointer API.
 
 ```compile_fail,E0603
-let _ = rlumod::ffi_zero_based::rlumod_storage_lengths;
+let _ = rlumod::ffi::zero_based::rlumod_storage_lengths;
 ```
 "#
 )]
@@ -201,11 +201,8 @@ mod algorithm;
 mod api;
 pub use api::*;
 
-#[cfg(feature = "c-ffi-one-based")]
+#[cfg(any(feature = "c-ffi-one-based", feature = "c-ffi-zero-based"))]
 mod ffi;
-
-#[cfg(feature = "c-ffi-zero-based")]
-mod ffi_zero_based;
 
 #[cfg(feature = "lumod-c")]
 pub mod lumod_c;
