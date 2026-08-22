@@ -55,7 +55,7 @@ storage. Descriptor fields may be read but must not be changed by the caller.
 Enable the feature in the final static-library crate as follows:
 
 ```toml
-rlumod = { version = "0.2.0", features = ["c-ffi-zero-based"] }
+rlumod = { version = "1.0.0", features = ["c-ffi-zero-based"] }
 ```
 
 The descriptor layout, function signatures, and documented status numbers in
@@ -78,7 +78,7 @@ The final crate must also reference `rlumod` so the linker retains the C ABI:
 crate-type = ["staticlib"]
 
 [dependencies]
-rlumod = { version = "0.2.0", features = ["c-ffi-one-based"] }
+rlumod = { version = "1.0.0", features = ["c-ffi-one-based"] }
 
 [profile.dev]
 panic = "abort"
