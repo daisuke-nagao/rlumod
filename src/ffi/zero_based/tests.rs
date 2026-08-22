@@ -458,3 +458,109 @@ fn update_errors_and_remove_to_zero_preserve_state() {
     }
     assert_eq!(factor.dimension, 1);
 }
+
+#[test]
+fn enforces_operation_specific_update_alias_rules() {
+    let (mut l, mut u) = ([0.0_f64; 6], [0.0_f64; 3]);
+    let (mut y, mut z, mut w) = ([0.0_f64; 4], [0.0_f64; 2], [0.0_f64; 2]);
+    let mut factor = F64Factor::default();
+    let mut workspace = F64Workspace::default();
+    unsafe {
+        assert_eq!(
+            rlumod_f64_factor_from_storage(
+                &mut factor,
+                0,
+                2,
+                l.as_mut_ptr(),
+                l.len(),
+                u.as_mut_ptr(),
+                u.len(),
+            ),
+            RLUMOD_STATUS_OK
+        );
+        assert_eq!(
+            rlumod_f64_workspace_init(
+                &mut workspace,
+                y.as_mut_ptr(),
+                2,
+                z.as_mut_ptr(),
+                z.len(),
+                w.as_mut_ptr(),
+                w.len(),
+            ),
+            RLUMOD_STATUS_OK
+        );
+        assert_eq!(
+            rlumod_f64_push(&mut factor, ptr::null(), 0, ptr::null(), 0, 3.0, &workspace),
+            RLUMOD_STATUS_OK
+        );
+    }
+
+    let factor_before = factor;
+    let workspace_before = workspace;
+    let (l_before, u_before, y_before, z_before, w_before) = (l, u, y, z, w);
+    let input = [5.0_f64];
+    let factor_l = factor.l;
+    let workspace_y = workspace.y;
+    unsafe {
+        assert_eq!(
+            rlumod_f64_push(&mut factor, factor_l, 1, input.as_ptr(), 1, 7.0, &workspace,),
+            RLUMOD_STATUS_OVERLAPPING_BUFFERS
+        );
+        assert_eq!(
+            rlumod_f64_push(
+                &mut factor,
+                input.as_ptr(),
+                1,
+                workspace_y,
+                1,
+                7.0,
+                &workspace,
+            ),
+            RLUMOD_STATUS_OVERLAPPING_BUFFERS
+        );
+        assert_eq!(
+            rlumod_f64_replace_row(&mut factor, 0, factor_l, 1, &workspace),
+            RLUMOD_STATUS_OVERLAPPING_BUFFERS
+        );
+        assert_eq!(
+            rlumod_f64_replace_column(&mut factor, 0, workspace_y, 1, &workspace),
+            RLUMOD_STATUS_OVERLAPPING_BUFFERS
+        );
+        assert_eq!(
+            rlumod_f64_remove(&mut factor, 0, 0, &workspace, factor_l.cast::<FfiRemoval>(),),
+            RLUMOD_STATUS_OVERLAPPING_BUFFERS
+        );
+        assert_eq!(
+            rlumod_f64_remove(
+                &mut factor,
+                0,
+                0,
+                &workspace,
+                workspace_y.cast::<FfiRemoval>(),
+            ),
+            RLUMOD_STATUS_OVERLAPPING_BUFFERS
+        );
+    }
+    assert_eq!((factor, workspace), (factor_before, workspace_before));
+    assert_eq!(
+        (l, u, y, z, w),
+        (l_before, u_before, y_before, z_before, w_before)
+    );
+
+    unsafe {
+        assert_eq!(
+            rlumod_f64_push(
+                &mut factor,
+                input.as_ptr(),
+                input.len(),
+                input.as_ptr(),
+                input.len(),
+                7.0,
+                &workspace,
+            ),
+            RLUMOD_STATUS_OK
+        );
+    }
+    assert_eq!(factor.dimension, 2);
+}

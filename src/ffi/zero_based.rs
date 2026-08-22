@@ -147,18 +147,9 @@ fn optional_region<T>(pointer: *const T) -> StatusResult<Option<Region>> {
     }
 }
 
-fn ensure_disjoint<const N: usize>(
-    regions: [Option<Region>; N],
-    allowed_overlap: &[(usize, usize)],
-) -> StatusResult {
+fn ensure_disjoint<const N: usize>(regions: [Option<Region>; N]) -> StatusResult {
     for left in 0..N {
         for right in (left + 1)..N {
-            if allowed_overlap
-                .iter()
-                .any(|&(a, b)| (a == left && b == right) || (a == right && b == left))
-            {
-                continue;
-            }
             if regions[left]
                 .zip(regions[right])
                 .is_some_and(|(a, b)| a.overlaps(b))
@@ -281,7 +272,7 @@ unsafe fn factor_from_storage_impl<T: Real>(
         u_len,
     };
     let (l_region, u_region) = factor_regions(descriptor)?;
-    ensure_disjoint([Some(output_region), l_region, u_region], &[])?;
+    ensure_disjoint([Some(output_region), l_region, u_region])?;
     // SAFETY: All descriptor regions and aliases have been validated.
     unsafe { make_factor(descriptor)? };
     // SAFETY: `output` is valid, aligned, and disjoint from adopted storage.
@@ -308,7 +299,7 @@ unsafe fn workspace_init_impl<T: Copy>(
         w_len,
     };
     let (y_region, z_region, w_region) = workspace_regions(descriptor)?;
-    ensure_disjoint([Some(output_region), y_region, z_region, w_region], &[])?;
+    ensure_disjoint([Some(output_region), y_region, z_region, w_region])?;
     // SAFETY: All descriptor regions and aliases have been validated.
     unsafe { make_workspace(descriptor)? };
     // SAFETY: `output` is valid, aligned, and disjoint from workspace buffers.
@@ -359,25 +350,34 @@ impl<T: Real> UpdateContext<T> {
         })
     }
 
-    fn validate_aliases(
+    fn validate_update_region(&self, additional_region: Option<Region>) -> StatusResult {
+        ensure_disjoint([
+            Some(self.regions.factor_descriptor),
+            Some(self.regions.workspace_descriptor),
+            self.regions.l,
+            self.regions.u,
+            self.regions.y,
+            self.regions.z,
+            self.regions.w,
+            additional_region,
+        ])
+    }
+
+    fn validate_push_inputs(
         &self,
-        additional_regions: [Option<Region>; 2],
-        allowed_overlap: &[(usize, usize)],
+        row_region: Option<Region>,
+        column_region: Option<Region>,
     ) -> StatusResult {
-        ensure_disjoint(
-            [
-                Some(self.regions.factor_descriptor),
-                Some(self.regions.workspace_descriptor),
-                self.regions.l,
-                self.regions.u,
-                self.regions.y,
-                self.regions.z,
-                self.regions.w,
-                additional_regions[0],
-                additional_regions[1],
-            ],
-            allowed_overlap,
-        )
+        self.validate_update_region(row_region)?;
+        self.validate_update_region(column_region)
+    }
+
+    fn validate_replace_input(&self, values_region: Option<Region>) -> StatusResult {
+        self.validate_update_region(values_region)
+    }
+
+    fn validate_remove_output(&self, output_region: Option<Region>) -> StatusResult {
+        self.validate_update_region(output_region)
     }
 
     unsafe fn make_parts<'a>(self) -> StatusResult<(LuMod<'a, T>, Workspace<'a, T>)> {
@@ -402,7 +402,7 @@ unsafe fn push_impl<T: Real>(
     let context = unsafe { UpdateContext::from_raw(factor_pointer, workspace_pointer) }?;
     let row_region = region(row, row_len)?;
     let column_region = region(column, column_len)?;
-    context.validate_aliases([row_region, column_region], &[(7, 8)])?;
+    context.validate_push_inputs(row_region, column_region)?;
     let dimension = {
         // SAFETY: Every region and conflicting alias was validated above.
         let (mut factor, mut workspace) = unsafe { context.make_parts() }?;
@@ -437,7 +437,7 @@ unsafe fn replace_impl<T: Real>(
     // SAFETY: Raw descriptors retain the caller's contract.
     let context = unsafe { UpdateContext::from_raw(factor_pointer, workspace_pointer) }?;
     let values_region = region(values, values_len)?;
-    context.validate_aliases([values_region, None], &[])?;
+    context.validate_replace_input(values_region)?;
     // SAFETY: Every region and conflicting alias was validated above.
     let (mut factor, mut workspace) = unsafe { context.make_parts() }?;
     // SAFETY: The immutable input region was validated above.
@@ -459,7 +459,7 @@ unsafe fn remove_impl<T: Real>(
     // SAFETY: Raw descriptors retain the caller's contract.
     let context = unsafe { UpdateContext::from_raw(factor_pointer, workspace_pointer) }?;
     let output_region = optional_region(output)?;
-    context.validate_aliases([output_region, None], &[])?;
+    context.validate_remove_output(output_region)?;
     let (removal, dimension) = {
         // SAFETY: Every region and conflicting alias was validated above.
         let (mut factor, mut workspace) = unsafe { context.make_parts() }?;
@@ -498,16 +498,13 @@ unsafe fn solve_impl<T: Real>(
     let (l_region, u_region) = factor_regions(factor_descriptor)?;
     let rhs_region = region(rhs, rhs_len)?;
     let error_region = optional_region(error_index)?;
-    ensure_disjoint(
-        [
-            Some(factor_descriptor_region),
-            l_region,
-            u_region,
-            rhs_region,
-            error_region,
-        ],
-        &[],
-    )?;
+    ensure_disjoint([
+        Some(factor_descriptor_region),
+        l_region,
+        u_region,
+        rhs_region,
+        error_region,
+    ])?;
     let result = {
         // SAFETY: Every region and conflicting alias was validated above.
         let factor = unsafe { make_factor(factor_descriptor) }?;
