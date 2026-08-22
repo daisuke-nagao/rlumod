@@ -1,0 +1,121 @@
+// SPDX-FileCopyrightText: 2026 Daisuke Nagao
+// SPDX-License-Identifier: MIT
+
+#include <rlumod/rlumod.h>
+#include <lumod-c/lumod_dense.h>
+
+#include <math.h>
+
+static int close_enough(double actual, double expected) {
+  return fabs(actual - expected) <= 1.0e-12;
+}
+
+static int smoke_zero_based_f64(void) {
+  size_t l_len = 0;
+  size_t u_len = 0;
+  double l[6] = {0.0};
+  double u[3] = {0.0};
+  double y[2] = {0.0};
+  double z[2] = {0.0};
+  double w[2] = {0.0};
+  rlumod_f64_factor factor = {0, 0, NULL, 0, NULL, 0};
+  rlumod_f64_workspace workspace = {NULL, 0, NULL, 0, NULL, 0};
+
+  if (rlumod_storage_lengths(2, &l_len, &u_len) != RLUMOD_STATUS_OK ||
+      l_len != 6 || u_len != 3 ||
+      rlumod_f64_factor_init(&factor, 0, 2, l, 6, u, 3) !=
+          RLUMOD_STATUS_OK ||
+      rlumod_f64_workspace_init(&workspace, y, 2, z, 2, w, 2) !=
+          RLUMOD_STATUS_OK ||
+      rlumod_f64_push(&factor, NULL, 0, NULL, 0, 4.0, &workspace) !=
+          RLUMOD_STATUS_OK) {
+    return 11;
+  }
+
+  {
+    const double row[1] = {1.0};
+    const double column[1] = {2.0};
+    if (rlumod_f64_push(&factor, row, 1, column, 1, 5.0, &workspace) !=
+        RLUMOD_STATUS_OK) {
+      return 12;
+    }
+  }
+  {
+    double rhs[2] = {8.0, 11.0};
+    double transpose_rhs[2] = {6.0, 12.0};
+    if (rlumod_f64_solve_in_place(&factor, rhs, 2, NULL) !=
+            RLUMOD_STATUS_OK ||
+        rlumod_f64_solve_transpose_in_place(&factor, transpose_rhs, 2, NULL) !=
+            RLUMOD_STATUS_OK ||
+        !close_enough(rhs[0], 1.0) || !close_enough(rhs[1], 2.0) ||
+        !close_enough(transpose_rhs[0], 1.0) ||
+        !close_enough(transpose_rhs[1], 2.0)) {
+      return 13;
+    }
+  }
+  {
+    const double row[2] = {6.0, 5.0};
+    const double column[2] = {6.0, 8.0};
+    rlumod_removal removal = {0, 0, 0, 0};
+    if (rlumod_f64_replace_row(&factor, 0, row, 2, &workspace) !=
+            RLUMOD_STATUS_OK ||
+        rlumod_f64_replace_column(&factor, 0, column, 2, &workspace) !=
+            RLUMOD_STATUS_OK ||
+        rlumod_f64_remove(&factor, 0, 1, &workspace, &removal) !=
+            RLUMOD_STATUS_OK ||
+        factor.dimension != 1 || removal.has_moved_row != 1 ||
+        removal.moved_row != 1 || removal.has_moved_column != 0) {
+      return 14;
+    }
+  }
+  return 0;
+}
+
+static int smoke_zero_based_f32(void) {
+  float l[2] = {0.0F};
+  float u[1] = {0.0F};
+  float y[1] = {0.0F};
+  float z[1] = {0.0F};
+  float w[1] = {0.0F};
+  float rhs[1] = {6.0F};
+  const float replacement[1] = {2.0F};
+  rlumod_f32_factor factor = {0, 0, NULL, 0, NULL, 0};
+  rlumod_f32_workspace workspace = {NULL, 0, NULL, 0, NULL, 0};
+  rlumod_removal removal = {0, 0, 0, 0};
+
+  if (rlumod_f32_factor_init(&factor, 0, 1, l, 2, u, 1) !=
+          RLUMOD_STATUS_OK ||
+      rlumod_f32_workspace_init(&workspace, y, 1, z, 1, w, 1) !=
+          RLUMOD_STATUS_OK ||
+      rlumod_f32_push(&factor, NULL, 0, NULL, 0, 3.0F, &workspace) !=
+          RLUMOD_STATUS_OK ||
+      rlumod_f32_solve_in_place(&factor, rhs, 1, NULL) != RLUMOD_STATUS_OK ||
+      fabsf(rhs[0] - 2.0F) > 1.0e-5F ||
+      rlumod_f32_replace_row(&factor, 0, replacement, 1, &workspace) !=
+          RLUMOD_STATUS_OK ||
+      rlumod_f32_replace_column(&factor, 0, replacement, 1, &workspace) !=
+          RLUMOD_STATUS_OK ||
+      rlumod_f32_solve_transpose_in_place(&factor, rhs, 1, NULL) !=
+          RLUMOD_STATUS_OK ||
+      rlumod_f32_remove(&factor, 0, 0, &workspace, &removal) !=
+          RLUMOD_STATUS_OK) {
+    return 15;
+  }
+  return 0;
+}
+
+int main(void) {
+  {
+    const int status = smoke_zero_based_f64();
+    if (status != 0) {
+      return status;
+    }
+  }
+  {
+    const int status = smoke_zero_based_f32();
+    if (status != 0) {
+      return status;
+    }
+  }
+  return 0;
+}

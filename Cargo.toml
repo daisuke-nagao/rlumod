@@ -14,6 +14,7 @@ crate-type = ["rlib"]
 
 [features]
 default = []
+c-ffi-zero-based = []
 c-ffi-one-based = ["lumod-c"]
 lumod-c = []
 

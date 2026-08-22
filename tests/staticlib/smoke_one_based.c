@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <lumod-c/lumod_dense.h>
+#include <rlumod/rlumod.h>
 
 #include <math.h>
 

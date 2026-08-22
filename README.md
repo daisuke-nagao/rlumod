@@ -16,6 +16,8 @@ The crate provides:
   updates or solves; and
 - an optional `lumod-c` feature exposing a lower-level Rust slice API with the
   original LUmod names and mode arguments; and
+- an optional `c-ffi-zero-based` feature exposing a checked, zero-based C ABI
+  corresponding to the safe Rust lifecycle; and
 - an optional `c-ffi-one-based` feature exposing one-based C entry points for
   `LUmod`, `Lprod`, and `Usolve`.
 
@@ -29,6 +31,38 @@ cargo add rlumod
 ```
 
 ## C FFI
+
+The optional `c-ffi-zero-based` feature exports the checked, zero-based API in
+`include/rlumod/rlumod.h`. It supports both `float` and `double`, uses
+caller-owned factor and workspace storage, reports errors with stable numeric
+status values, and exposes push, row and column replacement, removal, and
+normal and transpose solves. It is independent of both `lumod-c` and
+`c-ffi-one-based`.
+
+The zero-based L buffer needs `capacity * (capacity + 1)` elements, including
+private solve work. U needs `capacity * (capacity + 1) / 2` elements, and each
+workspace buffer should normally have `capacity` elements. Use
+`rlumod_storage_lengths` instead of reproducing these formulas. Empty buffers
+may use a null pointer with length zero.
+
+This is a checked unsafe ABI, not a memory-safe C API. It validates dimensions,
+lengths, alignment, representable address ranges, and detectable overlap before
+forming Rust slices. The caller remains responsible for pointer lifetime,
+actual allocation size, initialization, and external synchronization. Even
+solves require exclusive access to a factor because L contains mutable scratch
+storage. Descriptor fields may be read but must not be changed by the caller.
+
+Enable the feature in the final static-library crate as follows:
+
+```toml
+rlumod = { version = "0.2.0", features = ["c-ffi-zero-based"] }
+```
+
+The descriptor layout, function signatures, and documented status numbers in
+this header form the target-specific ABI. `size_t` fields follow the pointer
+width of the target C ABI.
+
+### Original one-based compatibility ABI
 
 The optional `c-ffi-one-based` feature includes dense, one-based C entry points
 for `LUmod`, `Lprod`, and `Usolve`, as declared by
@@ -85,8 +119,8 @@ This compatibility ABI uses caller-owned, one-based buffers. Element zero is
 an unused dummy; L needs `maxmod * maxmod + 1` doubles and U needs
 `maxmod * (maxmod + 1) / 2 + 1` doubles. Callers must provide initialized,
 aligned, writable, sufficiently large, non-overlapping buffers. The ABI cannot
-verify those C pointer properties. Sparse storage, a dynamic library, and a
-checked length-and-status C API are not provided.
+verify those C pointer properties. Sparse storage and a dynamic library are not
+provided.
 
 ## Documentation and examples
 
