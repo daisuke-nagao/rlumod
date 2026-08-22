@@ -136,11 +136,15 @@ pub struct StorageLengths {
 /// let factor = rlumod::LuMod::from_storage(0, 4, &mut l, &mut u).unwrap();
 /// assert_eq!(factor.capacity(), 4);
 /// ```
-pub fn storage_lengths(capacity: usize) -> Result<StorageLengths, StorageError> {
-    let next = capacity.checked_add(1).ok_or(StorageError::SizeOverflow)?;
-    let l = capacity
-        .checked_mul(next)
-        .ok_or(StorageError::SizeOverflow)?;
+pub const fn storage_lengths(capacity: usize) -> Result<StorageLengths, StorageError> {
+    let next = match capacity.checked_add(1) {
+        Some(next) => next,
+        None => return Err(StorageError::SizeOverflow),
+    };
+    let l = match capacity.checked_mul(next) {
+        Some(l) => l,
+        None => return Err(StorageError::SizeOverflow),
+    };
     let u = if capacity % 2 == 0 {
         (capacity / 2) * next
     } else {

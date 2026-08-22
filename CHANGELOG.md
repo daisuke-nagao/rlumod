@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the independent `c-ffi-zero-based` feature with stable checked C ABI
   descriptors and status values for the complete `f32` and `f64` safe-API
   lifecycle.
+- Added the public `stack_storage!` macro for compile-time, fixed-size,
+  zero-initialized factor and workspace arrays.
 
 ## [0.2.0] - 2026-08-20
 
