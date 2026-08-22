@@ -95,29 +95,55 @@ jobs:
         run: rustup toolchain install stable --profile minimal
       - name: Run tests
         run: cargo +stable test --all-features
-      - name: Build downstream C FFI static library
+      - name: Build downstream C FFI static libraries
         if: matrix.ffi == true
-        run: cargo +stable build --manifest-path tests/staticlib/Cargo.toml --release
+        run: |
+          cargo +stable build --manifest-path tests/staticlib/Cargo.toml --release --target-dir tests/staticlib/target/one --no-default-features --features one-based
+          cargo +stable build --manifest-path tests/staticlib/Cargo.toml --release --target-dir tests/staticlib/target/zero --no-default-features --features zero-based
+          cargo +stable build --manifest-path tests/staticlib/Cargo.toml --release --target-dir tests/staticlib/target/both --no-default-features --features one-based,zero-based
       - name: Compile and run C and C++ FFI smoke tests
         if: matrix.ffi == true && runner.os != 'Windows'
         shell: bash
         run: |
-          archive="tests/staticlib/target/release/librlumod_staticlib_consumer.a"
-          cc -std=c11 -Wall -Wextra -Werror -Iinclude \
-            tests/staticlib/smoke.c "${archive}" -lm -o tests/staticlib/target/smoke-c
-          tests/staticlib/target/smoke-c
-          c++ -x c++ -std=c++17 -Wall -Wextra -Werror -Iinclude \
-            tests/staticlib/smoke.c -x none "${archive}" -lm -o tests/staticlib/target/smoke-cpp
-          tests/staticlib/target/smoke-cpp
+          compile_and_run() {
+            variant="$1"
+            source="$2"
+            stem="$3"
+            target="tests/staticlib/target/${variant}"
+            archive="${target}/release/librlumod_staticlib_consumer.a"
+            cc -std=c11 -Wall -Wextra -Werror -Iinclude \
+              "tests/staticlib/${source}" "${archive}" -lm -o "${target}/${stem}-c"
+            "${target}/${stem}-c"
+            c++ -x c++ -std=c++17 -Wall -Wextra -Werror -Iinclude \
+              "tests/staticlib/${source}" -x none "${archive}" -lm \
+              -o "${target}/${stem}-cpp"
+            "${target}/${stem}-cpp"
+          }
+          compile_and_run one smoke_one_based.c smoke-one
+          compile_and_run zero smoke_zero_based.c smoke-zero
+          compile_and_run both smoke_one_based.c smoke-one
+          compile_and_run both smoke_zero_based.c smoke-zero
       - name: Compile and run MSVC C and C++ FFI smoke tests
         if: matrix.ffi == true && runner.os == 'Windows'
         shell: cmd
         run: |
           call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=amd64
-          cl /nologo /W4 /WX /std:c11 /Iinclude tests\staticlib\smoke.c /Fe:tests\staticlib\target\smoke-c.exe /link tests\staticlib\target\release\rlumod_staticlib_consumer.lib
-          tests\staticlib\target\smoke-c.exe
-          cl /nologo /W4 /WX /TP /std:c++17 /Iinclude tests\staticlib\smoke.c /Fe:tests\staticlib\target\smoke-cpp.exe /link tests\staticlib\target\release\rlumod_staticlib_consumer.lib
-          tests\staticlib\target\smoke-cpp.exe
+          cl /nologo /W4 /WX /std:c11 /Iinclude /Fotests\staticlib\target\one\smoke-one-c.obj tests\staticlib\smoke_one_based.c /Fe:tests\staticlib\target\one\smoke-one-c.exe /link tests\staticlib\target\one\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\one\smoke-one-c.exe
+          cl /nologo /W4 /WX /TP /std:c++17 /Iinclude /Fotests\staticlib\target\one\smoke-one-cpp.obj tests\staticlib\smoke_one_based.c /Fe:tests\staticlib\target\one\smoke-one-cpp.exe /link tests\staticlib\target\one\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\one\smoke-one-cpp.exe
+          cl /nologo /W4 /WX /std:c11 /Iinclude /Fotests\staticlib\target\zero\smoke-zero-c.obj tests\staticlib\smoke_zero_based.c /Fe:tests\staticlib\target\zero\smoke-zero-c.exe /link tests\staticlib\target\zero\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\zero\smoke-zero-c.exe
+          cl /nologo /W4 /WX /TP /std:c++17 /Iinclude /Fotests\staticlib\target\zero\smoke-zero-cpp.obj tests\staticlib\smoke_zero_based.c /Fe:tests\staticlib\target\zero\smoke-zero-cpp.exe /link tests\staticlib\target\zero\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\zero\smoke-zero-cpp.exe
+          cl /nologo /W4 /WX /std:c11 /Iinclude /Fotests\staticlib\target\both\smoke-one-c.obj tests\staticlib\smoke_one_based.c /Fe:tests\staticlib\target\both\smoke-one-c.exe /link tests\staticlib\target\both\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\both\smoke-one-c.exe
+          cl /nologo /W4 /WX /TP /std:c++17 /Iinclude /Fotests\staticlib\target\both\smoke-one-cpp.obj tests\staticlib\smoke_one_based.c /Fe:tests\staticlib\target\both\smoke-one-cpp.exe /link tests\staticlib\target\both\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\both\smoke-one-cpp.exe
+          cl /nologo /W4 /WX /std:c11 /Iinclude /Fotests\staticlib\target\both\smoke-zero-c.obj tests\staticlib\smoke_zero_based.c /Fe:tests\staticlib\target\both\smoke-zero-c.exe /link tests\staticlib\target\both\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\both\smoke-zero-c.exe
+          cl /nologo /W4 /WX /TP /std:c++17 /Iinclude /Fotests\staticlib\target\both\smoke-zero-cpp.obj tests\staticlib\smoke_zero_based.c /Fe:tests\staticlib\target\both\smoke-zero-cpp.exe /link tests\staticlib\target\both\release\rlumod_staticlib_consumer.lib
+          tests\staticlib\target\both\smoke-zero-cpp.exe
       - name: Verify C FFI feature gate and unmangled symbols
         if: matrix.runner == 'ubuntu-24.04'
         shell: bash
@@ -150,21 +176,37 @@ jobs:
           ! grep -Fx rlumod_f32_factor_from_storage target/feature-gate-zero/symbols.txt
           ! grep -Fx rlumod_f64_factor_from_storage target/feature-gate-zero/symbols.txt
           ! grep -Ex 'LUmod|Lprod|Usolve' target/feature-gate-zero/symbols.txt
-          archive="tests/staticlib/target/release/librlumod_staticlib_consumer.a"
-          nm -g --defined-only "${archive}" | awk '{print $3}' > tests/staticlib/target/symbols.txt
+          archive_one="tests/staticlib/target/one/release/librlumod_staticlib_consumer.a"
+          archive_zero="tests/staticlib/target/zero/release/librlumod_staticlib_consumer.a"
+          archive_both="tests/staticlib/target/both/release/librlumod_staticlib_consumer.a"
+          nm -g --defined-only "${archive_one}" | awk '{print $3}' \
+            > tests/staticlib/target/one/symbols.txt
+          nm -g --defined-only "${archive_zero}" | awk '{print $3}' \
+            > tests/staticlib/target/zero/symbols.txt
+          nm -g --defined-only "${archive_both}" | awk '{print $3}' \
+            > tests/staticlib/target/both/symbols.txt
           for symbol in LUmod Lprod Usolve; do
-            grep -Fx "${symbol}" tests/staticlib/target/symbols.txt
+            grep -Fx "${symbol}" tests/staticlib/target/one/symbols.txt
+            grep -Fx "${symbol}" tests/staticlib/target/both/symbols.txt
           done
+          ! grep -E '^rlumod_' tests/staticlib/target/one/symbols.txt
           for operation in factor_init workspace_init push replace_row \
             replace_column remove solve_in_place solve_transpose_in_place; do
-            grep -Fx "rlumod_f32_${operation}" tests/staticlib/target/symbols.txt
-            grep -Fx "rlumod_f64_${operation}" tests/staticlib/target/symbols.txt
+            grep -Fx "rlumod_f32_${operation}" tests/staticlib/target/zero/symbols.txt
+            grep -Fx "rlumod_f64_${operation}" tests/staticlib/target/zero/symbols.txt
+            grep -Fx "rlumod_f32_${operation}" tests/staticlib/target/both/symbols.txt
+            grep -Fx "rlumod_f64_${operation}" tests/staticlib/target/both/symbols.txt
           done
-          grep -Fx rlumod_storage_lengths tests/staticlib/target/symbols.txt
-          ! grep -Fx rlumod_f32_factor_from_storage tests/staticlib/target/symbols.txt
-          ! grep -Fx rlumod_f64_factor_from_storage tests/staticlib/target/symbols.txt
+          grep -Fx rlumod_storage_lengths tests/staticlib/target/zero/symbols.txt
+          grep -Fx rlumod_storage_lengths tests/staticlib/target/both/symbols.txt
+          ! grep -Ex 'LUmod|Lprod|Usolve' tests/staticlib/target/zero/symbols.txt
+          ! grep -Fx rlumod_f32_factor_from_storage tests/staticlib/target/zero/symbols.txt
+          ! grep -Fx rlumod_f64_factor_from_storage tests/staticlib/target/zero/symbols.txt
+          ! grep -Fx rlumod_f32_factor_from_storage tests/staticlib/target/both/symbols.txt
+          ! grep -Fx rlumod_f64_factor_from_storage tests/staticlib/target/both/symbols.txt
           for symbol in LUforw LUback elm elmgen; do
-            ! grep -Fx "${symbol}" tests/staticlib/target/symbols.txt
+            ! grep -Fx "${symbol}" tests/staticlib/target/one/symbols.txt
+            ! grep -Fx "${symbol}" tests/staticlib/target/both/symbols.txt
           done
           ! grep -Eq '(^|[^[:alnum:]_])(LUforw|LUback|elm|elmgen)([^[:alnum:]_]|$)' \
             include/lumod-c/lumod_dense.h
