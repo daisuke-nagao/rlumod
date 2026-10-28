@@ -270,7 +270,7 @@ jobs:
       - name: Install Rust stable and WASI target
         run: rustup toolchain install stable --profile minimal --target wasm32-wasip1
       - name: Install Wasmtime
-        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2
         with:
           tool: wasmtime@47.0.3
           fallback: none
@@ -291,7 +291,7 @@ jobs:
       - name: Install Rust stable and browser WebAssembly target
         run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
       - name: Install wasm-pack
-        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2
         with:
           tool: wasm-pack@0.15.0
           fallback: none
